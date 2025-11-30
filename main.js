@@ -47,67 +47,116 @@ __export(exports, {
   default: () => main_default
 });
 var import_obsidian = __toModule(require("obsidian"));
+var DEFAULT_PROPERTY_MAPPINGS = {
+  "full_name": "\u4E8B\u4EF6\u4E3B\u8981\u5185\u5BB9",
+  "rel-group": "\u5173\u8054\u7EC4\u7EC7",
+  "rel-person": "\u5173\u8054\u4EBA\u5458",
+  "rel-event": "\u5173\u8054\u4E8B\u4EF6",
+  "rel-location": "\u5173\u8054\u5730\u70B9",
+  "rel-country": "\u5173\u8054\u56FD\u5BB6",
+  "birth": "\u51FA\u751F\u65E5\u671F",
+  "gender": "\u6027\u522B",
+  "code": "\u4EE3\u7801"
+};
 var DEFAULT_SETTINGS = {
   eventNotePath: "Events",
-  templatePath: "_Templates/Temp-Event.md"
+  templatePath: "_Templates/Temp-Event.md",
+  propertyMappings: DEFAULT_PROPERTY_MAPPINGS
 };
+function parseYamlFrontMatter(content) {
+  const yamlRegex = /^---\n([\s\S]*?)\n---/;
+  const match = content.match(yamlRegex);
+  if (!match) {
+    return {};
+  }
+  const yamlContent = match[1];
+  const properties = {};
+  yamlContent.split("\n").forEach((line) => {
+    line = line.trim();
+    if (line && !line.startsWith("#")) {
+      const [key, ...valueParts] = line.split(":");
+      if (key) {
+        const value = valueParts.join(":").trim();
+        properties[key.trim()] = value;
+      }
+    }
+  });
+  return properties;
+}
+function getTemplateProperties(content) {
+  const properties = parseYamlFrontMatter(content);
+  return Object.keys(properties).filter((key) => key !== "entity-type");
+}
+function getDisplayName(property, mappings) {
+  return mappings[property] || property;
+}
 var EventModal = class extends import_obsidian.Modal {
-  constructor(app, onSubmit) {
+  constructor(app, plugin, onSubmit) {
     super(app);
+    this.inputFields = {};
+    this.templateProperties = [];
+    this.plugin = plugin;
     this.onSubmit = onSubmit;
   }
   onOpen() {
-    const { contentEl } = this;
-    contentEl.createEl("h2", { text: "Create Entity-Event" });
-    const form = contentEl.createEl("form");
-    form.style.display = "flex";
-    form.style.flexDirection = "column";
-    form.style.gap = "10px";
-    form.createEl("label", { text: "\u5173\u8054\u7EC4\u7EC7" });
-    this.relGroupEl = new import_obsidian.TextComponent(form);
-    this.relGroupEl.setPlaceholder("Enter related group");
-    form.createEl("label", { text: "\u5173\u8054\u4EBA\u5458" });
-    this.relPersonEl = new import_obsidian.TextComponent(form);
-    this.relPersonEl.setPlaceholder("Enter related person");
-    form.createEl("label", { text: "\u5173\u8054\u4E8B\u4EF6" });
-    this.relEventEl = new import_obsidian.TextComponent(form);
-    this.relEventEl.setPlaceholder("Enter related event");
-    form.createEl("label", { text: "\u5173\u8054\u5730\u70B9" });
-    this.relLocationEl = new import_obsidian.TextComponent(form);
-    this.relLocationEl.setPlaceholder("Enter related location");
-    form.createEl("label", { text: "\u5173\u8054\u56FD\u5BB6" });
-    this.relCountryEl = new import_obsidian.TextComponent(form);
-    this.relCountryEl.setPlaceholder("Enter related country");
-    form.createEl("label", { text: "\u4E8B\u4EF6\u4E3B\u8981\u5185\u5BB9" });
-    this.fullNameEl = new import_obsidian.TextComponent(form);
-    this.fullNameEl.setPlaceholder("Enter event name");
-    const buttonContainer = form.createEl("div");
-    buttonContainer.style.display = "flex";
-    buttonContainer.style.justifyContent = "flex-end";
-    buttonContainer.style.gap = "10px";
-    buttonContainer.style.marginTop = "10px";
-    const cancelBtn = buttonContainer.createEl("button", { text: "Cancel", type: "button" });
-    cancelBtn.addEventListener("click", () => {
-      this.close();
-    });
-    const submitBtn = buttonContainer.createEl("button", { text: "Create", type: "submit" });
-    submitBtn.style.marginLeft = "auto";
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      this.onSubmit({
-        relGroup: this.relGroupEl.getValue(),
-        relPerson: this.relPersonEl.getValue(),
-        relEvent: this.relEventEl.getValue(),
-        relLocation: this.relLocationEl.getValue(),
-        relCountry: this.relCountryEl.getValue(),
-        fullName: this.fullNameEl.getValue()
-      });
-      this.close();
+    return __async(this, null, function* () {
+      const { contentEl } = this;
+      contentEl.createEl("h2", { text: "Create Entity-Event" });
+      try {
+        const templatePath = this.plugin.settings.templatePath;
+        const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+        if (!templateFile) {
+          contentEl.createEl("div", { text: `Template file not found: ${templatePath}`, cls: "error" });
+          return;
+        }
+        const templateContent = yield this.app.vault.read(templateFile);
+        this.templateProperties = getTemplateProperties(templateContent);
+        if (this.templateProperties.length === 0) {
+          contentEl.createEl("div", { text: "No properties found in template", cls: "error" });
+          return;
+        }
+        const form = contentEl.createEl("form");
+        form.style.display = "flex";
+        form.style.flexDirection = "column";
+        form.style.gap = "10px";
+        this.templateProperties.forEach((property) => {
+          const displayName = getDisplayName(property, this.plugin.settings.propertyMappings);
+          form.createEl("label", { text: displayName });
+          const input = new import_obsidian.TextComponent(form);
+          input.setPlaceholder(`Enter ${property}`);
+          this.inputFields[property] = input;
+        });
+        const buttonContainer = form.createEl("div");
+        buttonContainer.style.display = "flex";
+        buttonContainer.style.justifyContent = "flex-end";
+        buttonContainer.style.gap = "10px";
+        buttonContainer.style.marginTop = "10px";
+        const cancelBtn = buttonContainer.createEl("button", { text: "Cancel", type: "button" });
+        cancelBtn.addEventListener("click", () => {
+          this.close();
+        });
+        const submitBtn = buttonContainer.createEl("button", { text: "Create", type: "submit" });
+        submitBtn.style.marginLeft = "auto";
+        form.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const result = {};
+          this.templateProperties.forEach((property) => {
+            result[property] = this.inputFields[property].getValue();
+          });
+          this.onSubmit(result);
+          this.close();
+        });
+      } catch (error) {
+        console.error("Error loading template:", error);
+        contentEl.createEl("div", { text: "Error loading template", cls: "error" });
+      }
     });
   }
   onClose() {
     const { contentEl } = this;
     contentEl.empty();
+    this.inputFields = {};
+    this.templateProperties = [];
   }
 };
 var EntityCreatorSettingTab = class extends import_obsidian.PluginSettingTab {
@@ -127,6 +176,28 @@ var EntityCreatorSettingTab = class extends import_obsidian.PluginSettingTab {
       this.plugin.settings.templatePath = value;
       yield this.plugin.saveSettings();
     })));
+    containerEl.createEl("h3", { text: "Property Mappings" });
+    containerEl.createEl("p", { text: "Map template properties to display names in the modal" });
+    Object.entries(this.plugin.settings.propertyMappings).forEach(([property, displayName]) => {
+      const setting = new import_obsidian.Setting(containerEl).setName(property).setDesc(`Display name: ${displayName}`).addText((text) => text.setValue(displayName).onChange((value) => __async(this, null, function* () {
+        this.plugin.settings.propertyMappings[property] = value;
+        yield this.plugin.saveSettings();
+        this.display();
+      })));
+    });
+    const addMappingSetting = new import_obsidian.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
+      const propertyInput = addMappingSetting.components[0];
+      const displayNameInput = addMappingSetting.components[1];
+      const property = propertyInput.getValue().trim();
+      const displayName = displayNameInput.getValue().trim();
+      if (property && displayName) {
+        this.plugin.settings.propertyMappings[property] = displayName;
+        yield this.plugin.saveSettings();
+        propertyInput.setValue("");
+        displayNameInput.setValue("");
+        this.display();
+      }
+    })));
   }
 };
 var EntityCreatorPlugin = class extends import_obsidian.Plugin {
@@ -137,7 +208,7 @@ var EntityCreatorPlugin = class extends import_obsidian.Plugin {
         id: "create-entity-event",
         name: "Create Entity-Event",
         callback: () => {
-          new EventModal(this.app, (result) => __async(this, null, function* () {
+          new EventModal(this.app, this, (result) => __async(this, null, function* () {
             yield this.createEventNote(result);
           })).open();
         }
@@ -169,7 +240,11 @@ var EntityCreatorPlugin = class extends import_obsidian.Plugin {
           return;
         }
         const templateContent = yield this.app.vault.read(templateFile);
-        let content = templateContent.replace(/rel-group:/, `rel-group: ${data.relGroup}`).replace(/rel-person:/, `rel-person: ${data.relPerson}`).replace(/rel-event:/, `rel-event: ${data.relEvent}`).replace(/rel-location:/, `rel-location: ${data.relLocation}`).replace(/rel-country:/, `rel-country: ${data.relCountry}`).replace(/full_name:/, `full_name: ${data.fullName}`);
+        let content = templateContent;
+        Object.entries(data).forEach(([key, value]) => {
+          const regex = new RegExp(`${key}:`, "g");
+          content = content.replace(regex, `${key}: ${value}`);
+        });
         const path = this.settings.eventNotePath;
         let folder = this.app.vault.getAbstractFileByPath(path);
         if (!folder) {
@@ -181,7 +256,7 @@ var EntityCreatorPlugin = class extends import_obsidian.Plugin {
           console.error(`Failed to create folder: ${path}`);
           return;
         }
-        const fileName = `${data.fullName || "Untitled"}.md`;
+        const fileName = `${data["full_name"] || "Untitled"}.md`;
         const notePath = `${path}/${fileName}`;
         console.log(`Creating note at: ${notePath}`);
         yield this.app.vault.create(notePath, content);
