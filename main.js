@@ -1,6 +1,8 @@
 var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getOwnPropSymbols = Object.getOwnPropertySymbols;
 var __getProtoOf = Object.getPrototypeOf;
@@ -18,6 +20,7 @@ var __spreadValues = (a, b) => {
     }
   return a;
 };
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
 var __export = (target, all) => {
   __markAsModule(target);
@@ -83,28 +86,23 @@ var ENTITY_DISPLAY_NAMES = {
 var DEFAULT_ENTITY_CONFIGS = {
   "event": {
     notePath: "Events",
-    templatePath: "_Templates/Temp-Event.md",
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: "_Templates/Temp-Event.md"
   },
   "person": {
     notePath: "Person",
-    templatePath: "_Templates/Temp-Person.md",
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: "_Templates/Temp-Person.md"
   },
   "organization": {
     notePath: "Organization",
-    templatePath: "_Templates/Temp-Group.md",
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: "_Templates/Temp-Group.md"
   },
   "location": {
     notePath: "Location",
-    templatePath: "_Templates/Temp-Location.md",
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: "_Templates/Temp-Location.md"
   },
   "country": {
     notePath: "Country",
-    templatePath: "_Templates/Temp-Country.md",
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: "_Templates/Temp-Country.md"
   }
 };
 function parseYamlFrontMatter(content) {
@@ -171,7 +169,7 @@ var EntityModal = class extends import_obsidian.Modal {
         form.style.flexDirection = "column";
         form.style.gap = "10px";
         this.templateProperties.forEach((property) => {
-          const displayName2 = getDisplayName(property, entityConfig.propertyMappings);
+          const displayName2 = getDisplayName(property, this.plugin.settings.propertyMappings);
           form.createEl("label", { text: displayName2 });
           const input = new import_obsidian.TextComponent(form);
           input.setPlaceholder(`Enter ${property}`);
@@ -245,6 +243,32 @@ var EntityCreatorSettingTab = class extends import_obsidian.PluginSettingTab {
       });
     });
     this.renderTabContent(tabContent, this.activeTab);
+    containerEl.createEl("h3", { text: "Property Mappings" });
+    containerEl.createEl("p", { text: "Map template properties to display names in the modal (shared by all entities)" });
+    Object.entries(this.plugin.settings.propertyMappings).forEach(([property, displayName]) => {
+      const setting = new import_obsidian.Setting(containerEl).setName(property).setDesc(`Display name: ${displayName}`).addText((text) => text.setValue(displayName).onChange((value) => __async(this, null, function* () {
+        this.plugin.settings.propertyMappings[property] = value;
+        yield this.plugin.saveSettings();
+        this.display();
+      }))).addButton((button) => button.setButtonText("Delete").setWarning().onClick(() => __async(this, null, function* () {
+        delete this.plugin.settings.propertyMappings[property];
+        yield this.plugin.saveSettings();
+        this.display();
+      })));
+    });
+    const addMappingSetting = new import_obsidian.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
+      const propertyInput = addMappingSetting.components[0];
+      const displayNameInput = addMappingSetting.components[1];
+      const property = propertyInput.getValue().trim();
+      const displayName2 = displayNameInput.getValue().trim();
+      if (property && displayName2) {
+        this.plugin.settings.propertyMappings[property] = displayName2;
+        yield this.plugin.saveSettings();
+        propertyInput.setValue("");
+        displayNameInput.setValue("");
+        this.display();
+      }
+    })));
   }
   renderTabContent(containerEl, entityType) {
     const displayName = ENTITY_DISPLAY_NAMES[entityType];
@@ -261,28 +285,6 @@ var EntityCreatorSettingTab = class extends import_obsidian.PluginSettingTab {
     new import_obsidian.Setting(containerEl).setName(`${displayName} Template File Path`).setDesc(`Path to the ${displayName} template file`).addText((text) => text.setPlaceholder(`_Templates/Temp-${displayName}.md`).setValue(entityConfig.templatePath).onChange((value) => __async(this, null, function* () {
       entityConfig.templatePath = value;
       yield this.plugin.saveSettings();
-    })));
-    containerEl.createEl("h4", { text: `${displayName} Property Mappings` });
-    containerEl.createEl("p", { text: "Map template properties to display names in the modal" });
-    Object.entries(entityConfig.propertyMappings).forEach(([property, displayName2]) => {
-      const setting = new import_obsidian.Setting(containerEl).setName(property).setDesc(`Display name: ${displayName2}`).addText((text) => text.setValue(displayName2).onChange((value) => __async(this, null, function* () {
-        entityConfig.propertyMappings[property] = value;
-        yield this.plugin.saveSettings();
-        this.display();
-      })));
-    });
-    const addMappingSetting = new import_obsidian.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
-      const propertyInput = addMappingSetting.components[0];
-      const displayNameInput = addMappingSetting.components[1];
-      const property = propertyInput.getValue().trim();
-      const displayName2 = displayNameInput.getValue().trim();
-      if (property && displayName2) {
-        entityConfig.propertyMappings[property] = displayName2;
-        yield this.plugin.saveSettings();
-        propertyInput.setValue("");
-        displayNameInput.setValue("");
-        this.display();
-      }
     })));
   }
 };
@@ -320,15 +322,32 @@ var EntityCreatorPlugin = class extends import_obsidian.Plugin {
           organization: DEFAULT_ENTITY_CONFIGS.organization,
           location: DEFAULT_ENTITY_CONFIGS.location,
           country: DEFAULT_ENTITY_CONFIGS.country
-        }
+        },
+        propertyMappings: __spreadValues({}, DEFAULT_PROPERTY_MAPPINGS)
       };
-      Object.keys(DEFAULT_ENTITY_CONFIGS).forEach((entityTypeStr) => {
-        var _a;
-        const entityType = entityTypeStr;
-        if ((_a = loadedSettings == null ? void 0 : loadedSettings.entities) == null ? void 0 : _a[entityType]) {
-          this.settings.entities[entityType] = __spreadValues(__spreadValues({}, this.settings.entities[entityType]), loadedSettings.entities[entityType]);
-        }
-      });
+      if (loadedSettings == null ? void 0 : loadedSettings.entities) {
+        Object.keys(DEFAULT_ENTITY_CONFIGS).forEach((entityTypeStr) => {
+          const entityType = entityTypeStr;
+          if (loadedSettings.entities[entityType]) {
+            this.settings.entities[entityType] = __spreadProps(__spreadValues({}, this.settings.entities[entityType]), {
+              notePath: loadedSettings.entities[entityType].notePath || this.settings.entities[entityType].notePath,
+              templatePath: loadedSettings.entities[entityType].templatePath || this.settings.entities[entityType].templatePath
+            });
+          }
+        });
+      }
+      if (loadedSettings == null ? void 0 : loadedSettings.propertyMappings) {
+        this.settings.propertyMappings = __spreadValues(__spreadValues({}, this.settings.propertyMappings), loadedSettings.propertyMappings);
+      }
+      if (loadedSettings == null ? void 0 : loadedSettings.entities) {
+        Object.keys(loadedSettings.entities).forEach((entityTypeStr) => {
+          var _a;
+          const entityType = entityTypeStr;
+          if ((_a = loadedSettings.entities[entityType]) == null ? void 0 : _a.propertyMappings) {
+            this.settings.propertyMappings = __spreadValues(__spreadValues({}, this.settings.propertyMappings), loadedSettings.entities[entityType].propertyMappings);
+          }
+        });
+      }
     });
   }
   saveSettings() {

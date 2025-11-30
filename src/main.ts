@@ -7,12 +7,12 @@ type EntityType = 'event' | 'person' | 'organization' | 'location' | 'country';
 interface EntityConfig {
   notePath: string;
   templatePath: string;
-  propertyMappings: Record<string, string>;
 }
 
 // 插件设置接口
 interface EntityCreatorSettings {
   entities: Record<EntityType, EntityConfig>;
+  propertyMappings: Record<string, string>;
 }
 
 // 默认属性映射
@@ -42,34 +42,30 @@ const ENTITY_DISPLAY_NAMES: Record<EntityType, string> = {
 const DEFAULT_ENTITY_CONFIGS: Record<EntityType, EntityConfig> = {
   'event': {
     notePath: 'Events',
-    templatePath: '_Templates/Temp-Event.md',
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: '_Templates/Temp-Event.md'
   },
   'person': {
     notePath: 'Person',
-    templatePath: '_Templates/Temp-Person.md',
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: '_Templates/Temp-Person.md'
   },
   'organization': {
     notePath: 'Organization',
-    templatePath: '_Templates/Temp-Group.md',
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: '_Templates/Temp-Group.md'
   },
   'location': {
     notePath: 'Location',
-    templatePath: '_Templates/Temp-Location.md',
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: '_Templates/Temp-Location.md'
   },
   'country': {
     notePath: 'Country',
-    templatePath: '_Templates/Temp-Country.md',
-    propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+    templatePath: '_Templates/Temp-Country.md'
   }
 };
 
 // 默认设置
 const DEFAULT_SETTINGS: EntityCreatorSettings = {
-  entities: DEFAULT_ENTITY_CONFIGS
+  entities: DEFAULT_ENTITY_CONFIGS,
+  propertyMappings: DEFAULT_PROPERTY_MAPPINGS
 };
 
 // YAML front matter解析函数
@@ -173,7 +169,7 @@ class EntityModal extends Modal {
 
       // 动态生成输入框
       this.templateProperties.forEach(property => {
-        const displayName = getDisplayName(property, entityConfig.propertyMappings);
+        const displayName = getDisplayName(property, this.plugin.settings.propertyMappings);
         
         // 创建标签
         form.createEl('label', { text: displayName });
@@ -288,6 +284,63 @@ class EntityCreatorSettingTab extends PluginSettingTab {
 
     // 显示当前选项卡内容
     this.renderTabContent(tabContent, this.activeTab);
+
+    // 属性映射设置（所有实体共用）
+    containerEl.createEl('h3', { text: 'Property Mappings' });
+    containerEl.createEl('p', { text: 'Map template properties to display names in the modal (shared by all entities)' });
+
+    // 显示当前映射
+    Object.entries(this.plugin.settings.propertyMappings).forEach(([property, displayName]) => {
+      const setting = new Setting(containerEl)
+        .setName(property)
+        .setDesc(`Display name: ${displayName}`)
+        .addText(text => text
+          .setValue(displayName)
+          .onChange(async (value) => {
+            this.plugin.settings.propertyMappings[property] = value;
+            await this.plugin.saveSettings();
+            // 重新渲染设置页面，以显示更新后的映射
+            this.display();
+          }))
+        .addButton(button => button
+          .setButtonText('Delete')
+          .setWarning()
+          .onClick(async () => {
+            delete this.plugin.settings.propertyMappings[property];
+            await this.plugin.saveSettings();
+            // 重新渲染设置页面
+            this.display();
+          }));
+    });
+
+    // 添加新映射
+    const addMappingSetting = new Setting(containerEl)
+      .setName('Add New Mapping')
+      .setDesc('Add a new property mapping')
+      .addText(text => text
+        .setPlaceholder('property-name')
+        .setValue(''))
+      .addText(text2 => text2
+        .setPlaceholder('Display Name')
+        .setValue(''))
+      .addButton(button => button
+        .setButtonText('Add')
+        .onClick(async () => {
+          const propertyInput = addMappingSetting.components[0] as TextComponent;
+          const displayNameInput = addMappingSetting.components[1] as TextComponent;
+          const property = propertyInput.getValue().trim();
+          const displayName2 = displayNameInput.getValue().trim();
+          
+          if (property && displayName2) {
+            this.plugin.settings.propertyMappings[property] = displayName2;
+            await this.plugin.saveSettings();
+            // 清空输入框
+            propertyInput.setValue('');
+            displayNameInput.setValue('');
+            // 重新渲染设置页面
+            this.display();
+          }
+        }));
   }
 
   // 渲染选项卡内容
@@ -325,54 +378,6 @@ class EntityCreatorSettingTab extends PluginSettingTab {
         .onChange(async (value) => {
           entityConfig.templatePath = value;
           await this.plugin.saveSettings();
-        }));
-
-    // 属性映射设置
-    containerEl.createEl('h4', { text: `${displayName} Property Mappings` });
-    containerEl.createEl('p', { text: 'Map template properties to display names in the modal' });
-
-    // 显示当前映射
-    Object.entries(entityConfig.propertyMappings).forEach(([property, displayName2]) => {
-      const setting = new Setting(containerEl)
-        .setName(property)
-        .setDesc(`Display name: ${displayName2}`)
-        .addText(text => text
-          .setValue(displayName2)
-          .onChange(async (value) => {
-            entityConfig.propertyMappings[property] = value;
-            await this.plugin.saveSettings();
-            // 重新渲染设置页面，以显示更新后的映射
-            this.display();
-          }));
-    });
-
-    // 添加新映射
-    const addMappingSetting = new Setting(containerEl)
-      .setName('Add New Mapping')
-      .setDesc('Add a new property mapping')
-      .addText(text => text
-        .setPlaceholder('property-name')
-        .setValue(''))
-      .addText(text2 => text2
-        .setPlaceholder('Display Name')
-        .setValue(''))
-      .addButton(button => button
-        .setButtonText('Add')
-        .onClick(async () => {
-          const propertyInput = addMappingSetting.components[0] as TextComponent;
-          const displayNameInput = addMappingSetting.components[1] as TextComponent;
-          const property = propertyInput.getValue().trim();
-          const displayName2 = displayNameInput.getValue().trim();
-          
-          if (property && displayName2) {
-            entityConfig.propertyMappings[property] = displayName2;
-            await this.plugin.saveSettings();
-            // 清空输入框
-            propertyInput.setValue('');
-            displayNameInput.setValue('');
-            // 重新渲染设置页面
-            this.display();
-          }
         }));
   }
 }
@@ -417,19 +422,45 @@ class EntityCreatorPlugin extends Plugin {
         organization: DEFAULT_ENTITY_CONFIGS.organization,
         location: DEFAULT_ENTITY_CONFIGS.location,
         country: DEFAULT_ENTITY_CONFIGS.country
-      }
+      },
+      propertyMappings: { ...DEFAULT_PROPERTY_MAPPINGS }
     };
     
-    // 为每个实体类型合并加载的配置
-    Object.keys(DEFAULT_ENTITY_CONFIGS).forEach((entityTypeStr) => {
-      const entityType = entityTypeStr as EntityType;
-      if (loadedSettings?.entities?.[entityType]) {
-        this.settings.entities[entityType] = {
-          ...this.settings.entities[entityType],
-          ...loadedSettings.entities[entityType]
-        };
-      }
-    });
+    // 合并加载的实体配置
+    if (loadedSettings?.entities) {
+      Object.keys(DEFAULT_ENTITY_CONFIGS).forEach((entityTypeStr) => {
+        const entityType = entityTypeStr as EntityType;
+        if (loadedSettings.entities[entityType]) {
+          this.settings.entities[entityType] = {
+            ...this.settings.entities[entityType],
+            // 只合并notePath和templatePath，忽略旧的propertyMappings
+            notePath: loadedSettings.entities[entityType].notePath || this.settings.entities[entityType].notePath,
+            templatePath: loadedSettings.entities[entityType].templatePath || this.settings.entities[entityType].templatePath
+          };
+        }
+      });
+    }
+    
+    // 合并加载的propertyMappings
+    if (loadedSettings?.propertyMappings) {
+      this.settings.propertyMappings = {
+        ...this.settings.propertyMappings,
+        ...loadedSettings.propertyMappings
+      };
+    }
+    
+    // 兼容旧版本设置，将旧的实体propertyMappings合并到顶层
+    if (loadedSettings?.entities) {
+      Object.keys(loadedSettings.entities).forEach((entityTypeStr) => {
+        const entityType = entityTypeStr as EntityType;
+        if (loadedSettings.entities[entityType]?.propertyMappings) {
+          this.settings.propertyMappings = {
+            ...this.settings.propertyMappings,
+            ...loadedSettings.entities[entityType].propertyMappings
+          };
+        }
+      });
+    }
   }
 
   async saveSettings() {
