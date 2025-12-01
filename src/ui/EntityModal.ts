@@ -104,6 +104,35 @@ export class EntityModal extends Modal {
             
             // 存储输入控件引用
             this.inputFields[property] = { type: propertyType, element: checkbox };
+          } else if (propertyType === 'Enum') {
+            // Enum类型：使用下拉菜单
+            const selectElement = document.createElement('select');
+            selectElement.style.padding = '8px';
+            selectElement.style.border = '1px solid var(--background-modifier-border)';
+            selectElement.style.borderRadius = '4px';
+            selectElement.style.background = 'var(--background-primary)';
+            selectElement.style.color = 'var(--text-normal)';
+            
+            // 添加默认选项
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = `Select ${property}`;
+            selectElement.appendChild(defaultOption);
+            
+            // 添加Enum选项
+            const enumOptions = propertyMapping?.enumOptions || [];
+            enumOptions.forEach(option => {
+              const optionElement = document.createElement('option');
+              optionElement.value = option;
+              optionElement.textContent = option;
+              selectElement.appendChild(optionElement);
+            });
+            
+            // 添加到容器
+            controlContainer.appendChild(selectElement);
+            
+            // 存储输入控件引用
+            this.inputFields[property] = { type: propertyType, element: selectElement };
           } else if (propertyType === 'List') {
             // List类型：支持添加多个值
             const listContainer = controlContainer.createEl('div');
@@ -313,6 +342,11 @@ export class EntityModal extends Modal {
             case 'Checkbox':
               // 获取checkbox的checked状态
               value = (field.element as HTMLInputElement).checked ? 'true' : 'false';
+              break;
+            
+            case 'Enum':
+              // 获取select元素的值
+              value = (field.element as HTMLSelectElement).value;
               break;
             
             case 'List':

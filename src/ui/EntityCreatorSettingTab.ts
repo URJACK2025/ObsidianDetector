@@ -80,12 +80,17 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
           .addOption('Checkbox', 'Checkbox')
           .addOption('Date', 'Date')
           .addOption('Date & time', 'Date & time')
+          .addOption('Enum', 'Enum')
           .addOption('List', 'List')
           .addOption('Number', 'Number')
           .addOption('Text', 'Text')
           .setValue(mapping.type)
           .onChange(async (value) => {
             this.plugin.settings.propertyMappings[property].type = value as any;
+            // 如果从其他类型切换到Enum，初始化enumOptions数组
+            if (value === 'Enum' && !this.plugin.settings.propertyMappings[property].enumOptions) {
+              this.plugin.settings.propertyMappings[property].enumOptions = [];
+            }
             await this.plugin.saveSettings();
             // 重新渲染设置页面
             this.display();
@@ -99,6 +104,92 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
             // 重新渲染设置页面
             this.display();
           }));
+      
+      // 如果是Enum类型，添加额外的配置组件
+      if (mapping.type === 'Enum') {
+        // 确保enumOptions数组存在
+        if (!mapping.enumOptions) {
+          mapping.enumOptions = [];
+        }
+        
+        // 创建Enum配置容器
+        const enumContainer = containerEl.createEl('div');
+        enumContainer.style.marginLeft = '20px';
+        enumContainer.style.marginBottom = '10px';
+        enumContainer.style.padding = '10px';
+        enumContainer.style.border = '1px solid var(--background-modifier-border)';
+        enumContainer.style.borderRadius = '4px';
+        enumContainer.style.background = 'var(--background-secondary)';
+        
+        // 创建Enum标题
+        enumContainer.createEl('h4', { text: 'Enum Options' });
+        
+        // 创建添加Enum选项的输入框和按钮
+        const addEnumContainer = enumContainer.createEl('div');
+        addEnumContainer.style.display = 'flex';
+        addEnumContainer.style.gap = '8px';
+        addEnumContainer.style.marginBottom = '10px';
+        
+        const enumNameInput = addEnumContainer.createEl('input');
+        enumNameInput.type = 'text';
+        enumNameInput.placeholder = 'Enum-Name';
+        enumNameInput.style.flex = '1';
+        enumNameInput.style.padding = '8px';
+        enumNameInput.style.border = '1px solid var(--background-modifier-border)';
+        enumNameInput.style.borderRadius = '4px';
+        enumNameInput.style.background = 'var(--background-primary)';
+        enumNameInput.style.color = 'var(--text-normal)';
+        
+        const addEnumButton = addEnumContainer.createEl('button', { text: 'Enum-Add' });
+        addEnumButton.style.padding = '8px 16px';
+        addEnumButton.style.border = '1px solid var(--background-modifier-border)';
+        addEnumButton.style.borderRadius = '4px';
+        addEnumButton.style.background = 'var(--background-secondary)';
+        addEnumButton.style.color = 'var(--text-normal)';
+        addEnumButton.style.cursor = 'pointer';
+        
+        // 添加Enum选项的点击事件
+        addEnumButton.addEventListener('click', async () => {
+          const enumName = enumNameInput.value.trim();
+          if (enumName && !mapping.enumOptions?.includes(enumName)) {
+            mapping.enumOptions?.push(enumName);
+            await this.plugin.saveSettings();
+            enumNameInput.value = '';
+            this.display(); // 重新渲染设置页面
+          }
+        });
+        
+        // 显示已有的Enum选项
+        mapping.enumOptions.forEach((option, index) => {
+          const optionContainer = enumContainer.createEl('div');
+          optionContainer.style.display = 'flex';
+          optionContainer.style.alignItems = 'center';
+          optionContainer.style.gap = '8px';
+          optionContainer.style.marginBottom = '4px';
+          
+          const optionText = optionContainer.createEl('span');
+          optionText.textContent = option;
+          optionText.style.flex = '1';
+          optionText.style.padding = '4px 8px';
+          optionText.style.border = '1px solid var(--background-modifier-border)';
+          optionText.style.borderRadius = '4px';
+          
+          const deleteEnumButton = optionContainer.createEl('button', { text: 'Enum-Delete' });
+          deleteEnumButton.style.padding = '4px 8px';
+          deleteEnumButton.style.border = '1px solid var(--background-modifier-border)';
+          deleteEnumButton.style.borderRadius = '4px';
+          deleteEnumButton.style.background = 'var(--background-secondary)';
+          deleteEnumButton.style.color = 'var(--text-normal)';
+          deleteEnumButton.style.cursor = 'pointer';
+          
+          // 删除Enum选项的点击事件
+          deleteEnumButton.addEventListener('click', async () => {
+            mapping.enumOptions?.splice(index, 1);
+            await this.plugin.saveSettings();
+            this.display(); // 重新渲染设置页面
+          });
+        });
+      }
     });
 
     // 添加新映射
@@ -115,6 +206,7 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
         .addOption('Checkbox', 'Checkbox')
         .addOption('Date', 'Date')
         .addOption('Date & time', 'Date & time')
+        .addOption('Enum', 'Enum')
         .addOption('List', 'List')
         .addOption('Number', 'Number')
         .addOption('Text', 'Text')
@@ -130,10 +222,17 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
           const type = typeDropdown.getValue();
           
           if (property && displayName2) {
-            this.plugin.settings.propertyMappings[property] = {
+            const newMapping: any = {
               displayName: displayName2,
               type: type as any
             };
+            
+            // 如果是Enum类型，初始化enumOptions数组
+            if (type === 'Enum') {
+              newMapping.enumOptions = [];
+            }
+            
+            this.plugin.settings.propertyMappings[property] = newMapping;
             await this.plugin.saveSettings();
             // 清空输入框
             propertyInput.setValue('');
