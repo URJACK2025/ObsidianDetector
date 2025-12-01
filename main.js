@@ -67,16 +67,16 @@ var import_obsidian3 = __toModule(require("obsidian"));
 
 // src/types.ts
 var DEFAULT_PROPERTY_MAPPINGS = {
-  "full_name": "\u540D\u79F0",
-  "rel-group": "\u5173\u8054\u7EC4\u7EC7",
-  "rel-person": "\u5173\u8054\u4EBA\u5458",
-  "rel-event": "\u5173\u8054\u4E8B\u4EF6",
-  "rel-location": "\u5173\u8054\u5730\u70B9",
-  "rel-country": "\u5173\u8054\u56FD\u5BB6",
-  "birth": "\u51FA\u751F\u65E5\u671F",
-  "gender": "\u6027\u522B",
-  "code": "\u4EE3\u7801",
-  "description": "\u63CF\u8FF0"
+  "full_name": { displayName: "\u540D\u79F0", type: "Text" },
+  "rel-group": { displayName: "\u5173\u8054\u7EC4\u7EC7", type: "Text" },
+  "rel-person": { displayName: "\u5173\u8054\u4EBA\u5458", type: "Text" },
+  "rel-event": { displayName: "\u5173\u8054\u4E8B\u4EF6", type: "Text" },
+  "rel-location": { displayName: "\u5173\u8054\u5730\u70B9", type: "Text" },
+  "rel-country": { displayName: "\u5173\u8054\u56FD\u5BB6", type: "Text" },
+  "birth": { displayName: "\u51FA\u751F\u65E5\u671F", type: "Date" },
+  "gender": { displayName: "\u6027\u522B", type: "Text" },
+  "code": { displayName: "\u4EE3\u7801", type: "Text" },
+  "description": { displayName: "\u63CF\u8FF0", type: "Text" }
 };
 var ENTITY_DISPLAY_NAMES = {
   "event": "Event",
@@ -137,7 +137,8 @@ function getTemplateProperties(content) {
   return Object.keys(properties).filter((key) => key !== "entity-type");
 }
 function getDisplayName(property, mappings) {
-  return mappings[property] || property;
+  var _a;
+  return ((_a = mappings[property]) == null ? void 0 : _a.displayName) || property;
 }
 
 // src/ui/EntityModal.ts
@@ -176,30 +177,110 @@ var EntityModal = class extends import_obsidian.Modal {
         const form = contentEl.createEl("form");
         form.style.display = "flex";
         form.style.flexDirection = "column";
-        form.style.gap = "10px";
+        form.style.gap = "15px";
         this.templateProperties.forEach((property) => {
-          const displayName2 = getDisplayName(property, this.plugin.settings.propertyMappings);
-          form.createEl("label", { text: displayName2 });
-          const input = new import_obsidian.TextComponent(form);
-          input.setPlaceholder(`Enter ${property}`);
-          this.inputFields[property] = input;
+          try {
+            const propertyMapping = this.plugin.settings.propertyMappings[property];
+            const displayName2 = getDisplayName(property, this.plugin.settings.propertyMappings);
+            const propertyType = (propertyMapping == null ? void 0 : propertyMapping.type) || "Text";
+            const controlContainer = form.createEl("div");
+            controlContainer.style.display = "flex";
+            controlContainer.style.flexDirection = "column";
+            const label = controlContainer.createEl("label");
+            label.textContent = displayName2;
+            label.style.marginBottom = "5px";
+            label.style.fontWeight = "bold";
+            let inputElement;
+            switch (propertyType) {
+              case "Checkbox":
+                inputElement = document.createElement("input");
+                inputElement.type = "checkbox";
+                break;
+              case "Date":
+                inputElement = document.createElement("input");
+                inputElement.type = "date";
+                break;
+              case "Date & time":
+                inputElement = document.createElement("input");
+                inputElement.type = "datetime-local";
+                break;
+              case "List":
+                inputElement = document.createElement("select");
+                const defaultOption = document.createElement("option");
+                defaultOption.value = "";
+                defaultOption.textContent = "Select a value";
+                inputElement.appendChild(defaultOption);
+                break;
+              case "Number":
+                inputElement = document.createElement("input");
+                inputElement.type = "number";
+                break;
+              case "Text":
+              default:
+                inputElement = document.createElement("input");
+                inputElement.type = "text";
+                inputElement.placeholder = `Enter ${property}`;
+                break;
+            }
+            inputElement.style.padding = "8px";
+            inputElement.style.border = "1px solid var(--background-modifier-border)";
+            inputElement.style.borderRadius = "4px";
+            inputElement.style.background = "var(--background-primary)";
+            inputElement.style.color = "var(--text-normal)";
+            controlContainer.appendChild(inputElement);
+            this.inputFields[property] = { type: propertyType, element: inputElement };
+          } catch (error) {
+            console.error(`Error creating control for property ${property}:`, error);
+            throw error;
+          }
         });
         const buttonContainer = form.createEl("div");
         buttonContainer.style.display = "flex";
         buttonContainer.style.justifyContent = "flex-end";
         buttonContainer.style.gap = "10px";
-        buttonContainer.style.marginTop = "10px";
+        buttonContainer.style.marginTop = "20px";
         const cancelBtn = buttonContainer.createEl("button", { text: "Cancel", type: "button" });
+        cancelBtn.style.padding = "8px 16px";
+        cancelBtn.style.border = "1px solid var(--background-modifier-border)";
+        cancelBtn.style.borderRadius = "4px";
+        cancelBtn.style.background = "var(--background-secondary)";
+        cancelBtn.style.color = "var(--text-normal)";
+        cancelBtn.style.cursor = "pointer";
         cancelBtn.addEventListener("click", () => {
           this.close();
         });
         const submitBtn = buttonContainer.createEl("button", { text: "Create", type: "submit" });
+        submitBtn.style.padding = "8px 16px";
+        submitBtn.style.border = "1px solid var(--background-modifier-border)";
+        submitBtn.style.borderRadius = "4px";
+        submitBtn.style.background = "var(--interactive-accent)";
+        submitBtn.style.color = "var(--text-on-accent)";
+        submitBtn.style.cursor = "pointer";
         submitBtn.style.marginLeft = "auto";
         form.addEventListener("submit", (e) => {
           e.preventDefault();
           const result = {};
           this.templateProperties.forEach((property) => {
-            result[property] = this.inputFields[property].getValue();
+            const { type, element } = this.inputFields[property];
+            let value;
+            switch (type) {
+              case "Checkbox":
+                value = element.checked ? "true" : "false";
+                break;
+              case "Date":
+              case "Date & time":
+              case "Number":
+              case "Text":
+                value = element.value;
+                break;
+              case "List":
+                value = element.value;
+                break;
+              default:
+                value = element.value;
+                break;
+            }
+            result[property] = value;
           });
           this.onSubmit(result);
           this.close();
@@ -257,9 +338,13 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
     this.renderTabContent(tabContent, this.activeTab);
     containerEl.createEl("h3", { text: "Property Mappings" });
     containerEl.createEl("p", { text: "Map template properties to display names in the modal (shared by all entities)" });
-    Object.entries(this.plugin.settings.propertyMappings).forEach(([property, displayName]) => {
-      const setting = new import_obsidian2.Setting(containerEl).setName(property).setDesc(`Display name: ${displayName}`).addText((text) => text.setValue(displayName).onChange((value) => __async(this, null, function* () {
-        this.plugin.settings.propertyMappings[property] = value;
+    Object.entries(this.plugin.settings.propertyMappings).forEach(([property, mapping]) => {
+      const setting = new import_obsidian2.Setting(containerEl).setName(property).setDesc(`Display name: ${mapping.displayName}, Type: ${mapping.type}`).addText((text) => text.setValue(mapping.displayName).onChange((value) => __async(this, null, function* () {
+        this.plugin.settings.propertyMappings[property].displayName = value;
+        yield this.plugin.saveSettings();
+        this.display();
+      }))).addDropdown((dropdown) => dropdown.addOption("Checkbox", "Checkbox").addOption("Date", "Date").addOption("Date & time", "Date & time").addOption("List", "List").addOption("Number", "Number").addOption("Text", "Text").setValue(mapping.type).onChange((value) => __async(this, null, function* () {
+        this.plugin.settings.propertyMappings[property].type = value;
         yield this.plugin.saveSettings();
         this.display();
       }))).addButton((button) => button.setButtonText("Delete").setWarning().onClick(() => __async(this, null, function* () {
@@ -268,16 +353,22 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
         this.display();
       })));
     });
-    const addMappingSetting = new import_obsidian2.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
+    const addMappingSetting = new import_obsidian2.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addDropdown((dropdown) => dropdown.addOption("Checkbox", "Checkbox").addOption("Date", "Date").addOption("Date & time", "Date & time").addOption("List", "List").addOption("Number", "Number").addOption("Text", "Text").setValue("Text")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
       const propertyInput = addMappingSetting.components[0];
       const displayNameInput = addMappingSetting.components[1];
+      const typeDropdown = addMappingSetting.components[2];
       const property = propertyInput.getValue().trim();
       const displayName2 = displayNameInput.getValue().trim();
+      const type = typeDropdown.getValue();
       if (property && displayName2) {
-        this.plugin.settings.propertyMappings[property] = displayName2;
+        this.plugin.settings.propertyMappings[property] = {
+          displayName: displayName2,
+          type
+        };
         yield this.plugin.saveSettings();
         propertyInput.setValue("");
         displayNameInput.setValue("");
+        typeDropdown.setValue("Text");
         this.display();
       }
     })));

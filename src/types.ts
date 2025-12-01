@@ -1,6 +1,15 @@
 // 实体类型枚举
 export type EntityType = 'event' | 'person' | 'organization' | 'location' | 'country';
 
+// 属性类型枚举
+export type PropertyType = 'Checkbox' | 'Date' | 'Date & time' | 'List' | 'Number' | 'Text';
+
+// 属性映射配置接口
+export interface PropertyMapping {
+  displayName: string;
+  type: PropertyType;
+}
+
 // 单个实体配置接口
 export interface EntityConfig {
   notePath: string;
@@ -10,21 +19,21 @@ export interface EntityConfig {
 // 插件设置接口
 export interface EntityCreatorSettings {
   entities: Record<EntityType, EntityConfig>;
-  propertyMappings: Record<string, string>;
+  propertyMappings: Record<string, PropertyMapping>;
 }
 
 // 默认属性映射
-export const DEFAULT_PROPERTY_MAPPINGS: Record<string, string> = {
-  'full_name': '名称',
-  'rel-group': '关联组织',
-  'rel-person': '关联人员',
-  'rel-event': '关联事件',
-  'rel-location': '关联地点',
-  'rel-country': '关联国家',
-  'birth': '出生日期',
-  'gender': '性别',
-  'code': '代码',
-  'description': '描述'
+export const DEFAULT_PROPERTY_MAPPINGS: Record<string, PropertyMapping> = {
+  'full_name': { displayName: '名称', type: 'Text' },
+  'rel-group': { displayName: '关联组织', type: 'Text' },
+  'rel-person': { displayName: '关联人员', type: 'Text' },
+  'rel-event': { displayName: '关联事件', type: 'Text' },
+  'rel-location': { displayName: '关联地点', type: 'Text' },
+  'rel-country': { displayName: '关联国家', type: 'Text' },
+  'birth': { displayName: '出生日期', type: 'Date' },
+  'gender': { displayName: '性别', type: 'Text' },
+  'code': { displayName: '代码', type: 'Text' },
+  'description': { displayName: '描述', type: 'Text' }
 };
 
 // 实体类型显示名称映射

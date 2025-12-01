@@ -64,16 +64,30 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
     containerEl.createEl('p', { text: 'Map template properties to display names in the modal (shared by all entities)' });
 
     // 显示当前映射
-    Object.entries(this.plugin.settings.propertyMappings).forEach(([property, displayName]) => {
+    Object.entries(this.plugin.settings.propertyMappings).forEach(([property, mapping]) => {
       const setting = new Setting(containerEl)
         .setName(property)
-        .setDesc(`Display name: ${displayName}`)
+        .setDesc(`Display name: ${mapping.displayName}, Type: ${mapping.type}`)
         .addText(text => text
-          .setValue(displayName)
+          .setValue(mapping.displayName)
           .onChange(async (value) => {
-            this.plugin.settings.propertyMappings[property] = value;
+            this.plugin.settings.propertyMappings[property].displayName = value;
             await this.plugin.saveSettings();
             // 重新渲染设置页面，以显示更新后的映射
+            this.display();
+          }))
+        .addDropdown(dropdown => dropdown
+          .addOption('Checkbox', 'Checkbox')
+          .addOption('Date', 'Date')
+          .addOption('Date & time', 'Date & time')
+          .addOption('List', 'List')
+          .addOption('Number', 'Number')
+          .addOption('Text', 'Text')
+          .setValue(mapping.type)
+          .onChange(async (value) => {
+            this.plugin.settings.propertyMappings[property].type = value as any;
+            await this.plugin.saveSettings();
+            // 重新渲染设置页面
             this.display();
           }))
         .addButton(button => button
@@ -97,20 +111,34 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
       .addText(text2 => text2
         .setPlaceholder('Display Name')
         .setValue(''))
+      .addDropdown(dropdown => dropdown
+        .addOption('Checkbox', 'Checkbox')
+        .addOption('Date', 'Date')
+        .addOption('Date & time', 'Date & time')
+        .addOption('List', 'List')
+        .addOption('Number', 'Number')
+        .addOption('Text', 'Text')
+        .setValue('Text'))
       .addButton(button => button
         .setButtonText('Add')
         .onClick(async () => {
           const propertyInput = addMappingSetting.components[0] as TextComponent;
           const displayNameInput = addMappingSetting.components[1] as TextComponent;
+          const typeDropdown = addMappingSetting.components[2] as any;
           const property = propertyInput.getValue().trim();
           const displayName2 = displayNameInput.getValue().trim();
+          const type = typeDropdown.getValue();
           
           if (property && displayName2) {
-            this.plugin.settings.propertyMappings[property] = displayName2;
+            this.plugin.settings.propertyMappings[property] = {
+              displayName: displayName2,
+              type: type as any
+            };
             await this.plugin.saveSettings();
             // 清空输入框
             propertyInput.setValue('');
             displayNameInput.setValue('');
+            typeDropdown.setValue('Text');
             // 重新渲染设置页面
             this.display();
           }

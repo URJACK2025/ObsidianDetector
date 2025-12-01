@@ -33,6 +33,6 @@ export function getTemplateProperties(content: string): string[] {
 }
 
 // 获取显示名称
-export function getDisplayName(property: string, mappings: Record<string, string>): string {
-  return mappings[property] || property;
+export function getDisplayName(property: string, mappings: Record<string, { displayName: string }>): string {
+  return mappings[property]?.displayName || property;
 }
