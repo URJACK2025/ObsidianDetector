@@ -63,7 +63,9 @@ var __async = (__this, __arguments, generator) => {
 __export(exports, {
   default: () => main_default
 });
-var import_obsidian = __toModule(require("obsidian"));
+var import_obsidian3 = __toModule(require("obsidian"));
+
+// src/types.ts
 var DEFAULT_PROPERTY_MAPPINGS = {
   "full_name": "\u540D\u79F0",
   "rel-group": "\u5173\u8054\u7EC4\u7EC7",
@@ -105,6 +107,11 @@ var DEFAULT_ENTITY_CONFIGS = {
     templatePath: "_Templates/Temp-Country.md"
   }
 };
+
+// src/ui/EntityModal.ts
+var import_obsidian = __toModule(require("obsidian"));
+
+// src/utils/yaml.ts
 function parseYamlFrontMatter(content) {
   const yamlRegex = /^---\n([\s\S]*?)\n---/;
   const match = content.match(yamlRegex);
@@ -132,6 +139,8 @@ function getTemplateProperties(content) {
 function getDisplayName(property, mappings) {
   return mappings[property] || property;
 }
+
+// src/ui/EntityModal.ts
 var EntityModal = class extends import_obsidian.Modal {
   constructor(app, plugin, entityType, onSubmit) {
     super(app);
@@ -208,7 +217,10 @@ var EntityModal = class extends import_obsidian.Modal {
     this.templateProperties = [];
   }
 };
-var EntityCreatorSettingTab = class extends import_obsidian.PluginSettingTab {
+
+// src/ui/EntityCreatorSettingTab.ts
+var import_obsidian2 = __toModule(require("obsidian"));
+var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -246,7 +258,7 @@ var EntityCreatorSettingTab = class extends import_obsidian.PluginSettingTab {
     containerEl.createEl("h3", { text: "Property Mappings" });
     containerEl.createEl("p", { text: "Map template properties to display names in the modal (shared by all entities)" });
     Object.entries(this.plugin.settings.propertyMappings).forEach(([property, displayName]) => {
-      const setting = new import_obsidian.Setting(containerEl).setName(property).setDesc(`Display name: ${displayName}`).addText((text) => text.setValue(displayName).onChange((value) => __async(this, null, function* () {
+      const setting = new import_obsidian2.Setting(containerEl).setName(property).setDesc(`Display name: ${displayName}`).addText((text) => text.setValue(displayName).onChange((value) => __async(this, null, function* () {
         this.plugin.settings.propertyMappings[property] = value;
         yield this.plugin.saveSettings();
         this.display();
@@ -256,7 +268,7 @@ var EntityCreatorSettingTab = class extends import_obsidian.PluginSettingTab {
         this.display();
       })));
     });
-    const addMappingSetting = new import_obsidian.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
+    const addMappingSetting = new import_obsidian2.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
       const propertyInput = addMappingSetting.components[0];
       const displayNameInput = addMappingSetting.components[1];
       const property = propertyInput.getValue().trim();
@@ -278,17 +290,19 @@ var EntityCreatorSettingTab = class extends import_obsidian.PluginSettingTab {
       return;
     }
     containerEl.createEl("h3", { text: `${displayName} Settings` });
-    new import_obsidian.Setting(containerEl).setName(`${displayName} Note Path`).setDesc(`Path where ${displayName} notes will be created`).addText((text) => text.setPlaceholder(`${displayName}s`).setValue(entityConfig.notePath).onChange((value) => __async(this, null, function* () {
+    new import_obsidian2.Setting(containerEl).setName(`${displayName} Note Path`).setDesc(`Path where ${displayName} notes will be created`).addText((text) => text.setPlaceholder(`${displayName}s`).setValue(entityConfig.notePath).onChange((value) => __async(this, null, function* () {
       entityConfig.notePath = value;
       yield this.plugin.saveSettings();
     })));
-    new import_obsidian.Setting(containerEl).setName(`${displayName} Template File Path`).setDesc(`Path to the ${displayName} template file`).addText((text) => text.setPlaceholder(`_Templates/Temp-${displayName}.md`).setValue(entityConfig.templatePath).onChange((value) => __async(this, null, function* () {
+    new import_obsidian2.Setting(containerEl).setName(`${displayName} Template File Path`).setDesc(`Path to the ${displayName} template file`).addText((text) => text.setPlaceholder(`_Templates/Temp-${displayName}.md`).setValue(entityConfig.templatePath).onChange((value) => __async(this, null, function* () {
       entityConfig.templatePath = value;
       yield this.plugin.saveSettings();
     })));
   }
 };
-var EntityCreatorPlugin = class extends import_obsidian.Plugin {
+
+// src/main.ts
+var EntityCreatorPlugin = class extends import_obsidian3.Plugin {
   onload() {
     return __async(this, null, function* () {
       yield this.loadSettings();
@@ -365,7 +379,7 @@ var EntityCreatorPlugin = class extends import_obsidian.Plugin {
         }
         const templatePath = entityConfig.templatePath;
         const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
-        if (!templateFile || !(templateFile instanceof import_obsidian.TFile)) {
+        if (!templateFile || !(templateFile instanceof import_obsidian3.TFile)) {
           console.error(`Template file not found at: ${templatePath}`);
           return;
         }
