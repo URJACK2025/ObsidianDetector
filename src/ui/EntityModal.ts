@@ -80,65 +80,189 @@ export class EntityModal extends Modal {
           label.style.marginBottom = '5px';
           label.style.fontWeight = 'bold';
           
-          // 创建输入元素
-          let inputElement: HTMLInputElement | HTMLSelectElement;
-          
-          switch (propertyType) {
-            case 'Checkbox':
-              // 使用原生checkbox
-              inputElement = document.createElement('input');
-              inputElement.type = 'checkbox';
-              break;
+          // 根据属性类型创建不同的控件
+          if (propertyType === 'Checkbox') {
+            // Checkbox类型：使用带标签的checkbox
+            const checkboxContainer = controlContainer.createEl('div');
+            checkboxContainer.style.display = 'flex';
+            checkboxContainer.style.alignItems = 'center';
+            checkboxContainer.style.gap = '8px';
             
-            case 'Date':
-              // 使用原生date输入
-              inputElement = document.createElement('input');
-              inputElement.type = 'date';
-              break;
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.style.margin = '0';
             
-            case 'Date & time':
-              // 使用原生datetime-local输入
-              inputElement = document.createElement('input');
-              inputElement.type = 'datetime-local';
-              break;
+            // 创建checkbox标签
+            const checkboxLabel = document.createElement('label');
+            checkboxLabel.textContent = 'Yes';
+            checkboxLabel.style.cursor = 'pointer';
+            checkboxLabel.style.userSelect = 'none';
             
-            case 'List':
-              // 使用原生select
-              inputElement = document.createElement('select');
-              // 添加默认选项
-              const defaultOption = document.createElement('option');
-              defaultOption.value = '';
-              defaultOption.textContent = 'Select a value';
-              inputElement.appendChild(defaultOption);
-              break;
+            // 将checkbox和标签添加到容器
+            checkboxContainer.appendChild(checkbox);
+            checkboxContainer.appendChild(checkboxLabel);
             
-            case 'Number':
-              // 使用原生number输入
-              inputElement = document.createElement('input');
-              inputElement.type = 'number';
-              break;
+            // 存储输入控件引用
+            this.inputFields[property] = { type: propertyType, element: checkbox };
+          } else if (propertyType === 'List') {
+            // List类型：支持添加多个值
+            const listContainer = controlContainer.createEl('div');
+            listContainer.style.display = 'flex';
+            listContainer.style.flexDirection = 'column';
+            listContainer.style.gap = '8px';
             
-            case 'Text':
-            default:
-              // 使用原生text输入
-              inputElement = document.createElement('input');
-              inputElement.type = 'text';
-              inputElement.placeholder = `Enter ${property}`;
-              break;
+            // 创建值列表容器
+            const valuesContainer = listContainer.createEl('div');
+            valuesContainer.style.display = 'flex';
+            valuesContainer.style.flexDirection = 'column';
+            valuesContainer.style.gap = '4px';
+            
+            // 创建添加新值的输入框和按钮
+            const addContainer = listContainer.createEl('div');
+            addContainer.style.display = 'flex';
+            addContainer.style.gap = '8px';
+            
+            const newInput = document.createElement('input');
+            newInput.type = 'text';
+            newInput.placeholder = `Add ${property}`;
+            newInput.style.flex = '1';
+            newInput.style.padding = '8px';
+            newInput.style.border = '1px solid var(--background-modifier-border)';
+            newInput.style.borderRadius = '4px';
+            newInput.style.background = 'var(--background-primary)';
+            newInput.style.color = 'var(--text-normal)';
+            
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.textContent = 'Add';
+            addButton.style.padding = '8px 16px';
+            addButton.style.border = '1px solid var(--background-modifier-border)';
+            addButton.style.borderRadius = '4px';
+            addButton.style.background = 'var(--background-secondary)';
+            addButton.style.color = 'var(--text-normal)';
+            addButton.style.cursor = 'pointer';
+            
+            // 添加到容器
+            addContainer.appendChild(newInput);
+            addContainer.appendChild(addButton);
+            
+            // 存储已添加的值
+            const values: string[] = [];
+            
+            // 添加值的函数
+            const addValue = (value: string) => {
+              if (value.trim() && !values.includes(value.trim())) {
+                const valueItem = valuesContainer.createEl('div');
+                valueItem.style.display = 'flex';
+                valueItem.style.alignItems = 'center';
+                valueItem.style.gap = '8px';
+                
+                const valueText = document.createElement('span');
+                valueText.textContent = value.trim();
+                valueText.style.flex = '1';
+                valueText.style.padding = '4px 8px';
+                valueText.style.border = '1px solid var(--background-modifier-border)';
+                valueText.style.borderRadius = '4px';
+                valueText.style.background = 'var(--background-secondary)';
+                
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.textContent = '×';
+                removeButton.style.width = '24px';
+                removeButton.style.height = '24px';
+                removeButton.style.display = 'flex';
+                removeButton.style.alignItems = 'center';
+                removeButton.style.justifyContent = 'center';
+                removeButton.style.border = '1px solid var(--background-modifier-border)';
+                removeButton.style.borderRadius = '4px';
+                removeButton.style.background = 'var(--background-secondary)';
+                removeButton.style.color = 'var(--text-normal)';
+                removeButton.style.cursor = 'pointer';
+                removeButton.style.fontSize = '16px';
+                removeButton.style.lineHeight = '1';
+                
+                // 移除值的函数
+                const removeValue = () => {
+                  const index = values.indexOf(value.trim());
+                  if (index > -1) {
+                    values.splice(index, 1);
+                  }
+                  valueItem.remove();
+                };
+                
+                removeButton.addEventListener('click', removeValue);
+                
+                valueItem.appendChild(valueText);
+                valueItem.appendChild(removeButton);
+                values.push(value.trim());
+              }
+            };
+            
+            // 添加按钮点击事件
+            addButton.addEventListener('click', () => {
+              addValue(newInput.value);
+              newInput.value = '';
+            });
+            
+            // 回车键添加值
+            newInput.addEventListener('keypress', (e) => {
+              if (e.key === 'Enter') {
+                addValue(newInput.value);
+                newInput.value = '';
+              }
+            });
+            
+            // 存储List控件引用
+            this.inputFields[property] = { 
+              type: propertyType, 
+              addValue, 
+              getValues: () => values 
+            };
+          } else {
+            // 其他类型：使用原生输入元素
+            let inputElement: HTMLInputElement;
+            
+            switch (propertyType) {
+              case 'Date':
+                // 使用原生date输入
+                inputElement = document.createElement('input');
+                inputElement.type = 'date';
+                break;
+              
+              case 'Date & time':
+                // 使用原生datetime-local输入
+                inputElement = document.createElement('input');
+                inputElement.type = 'datetime-local';
+                break;
+              
+              case 'Number':
+                // 使用原生number输入
+                inputElement = document.createElement('input');
+                inputElement.type = 'number';
+                break;
+              
+              case 'Text':
+              default:
+                // 使用原生text输入
+                inputElement = document.createElement('input');
+                inputElement.type = 'text';
+                inputElement.placeholder = `Enter ${property}`;
+                break;
+            }
+            
+            // 添加通用样式
+            inputElement.style.padding = '8px';
+            inputElement.style.border = '1px solid var(--background-modifier-border)';
+            inputElement.style.borderRadius = '4px';
+            inputElement.style.background = 'var(--background-primary)';
+            inputElement.style.color = 'var(--text-normal)';
+            
+            // 添加到容器
+            controlContainer.appendChild(inputElement);
+            
+            // 存储输入控件引用
+            this.inputFields[property] = { type: propertyType, element: inputElement };
           }
-          
-          // 添加通用样式
-          inputElement.style.padding = '8px';
-          inputElement.style.border = '1px solid var(--background-modifier-border)';
-          inputElement.style.borderRadius = '4px';
-          inputElement.style.background = 'var(--background-primary)';
-          inputElement.style.color = 'var(--text-normal)';
-          
-          // 添加到容器
-          controlContainer.appendChild(inputElement);
-          
-          // 存储输入控件引用
-          this.inputFields[property] = { type: propertyType, element: inputElement };
         } catch (error) {
           console.error(`Error creating control for property ${property}:`, error);
           throw error; // 重新抛出错误，以便外层try-catch捕获
@@ -181,27 +305,34 @@ export class EntityModal extends Modal {
         // 收集所有输入值
         const result: Record<string, string> = {};
         this.templateProperties.forEach(property => {
-          const { type, element } = this.inputFields[property];
+          const field = this.inputFields[property];
+          const { type } = field;
           let value: string;
           
           switch (type) {
             case 'Checkbox':
-              value = (element as HTMLInputElement).checked ? 'true' : 'false';
+              // 获取checkbox的checked状态
+              value = (field.element as HTMLInputElement).checked ? 'true' : 'false';
+              break;
+            
+            case 'List':
+              // 获取所有添加的值并格式化为YAML数组
+              const values = field.getValues();
+              if (values.length === 0) {
+                value = '';
+              } else {
+                // 格式化为YAML数组格式
+                value = '\n' + values.map(v => `  - "${v}"`).join('\n');
+              }
               break;
             
             case 'Date':
             case 'Date & time':
             case 'Number':
             case 'Text':
-              value = (element as HTMLInputElement).value;
-              break;
-            
-            case 'List':
-              value = (element as HTMLSelectElement).value;
-              break;
-            
             default:
-              value = (element as HTMLInputElement).value;
+              // 获取输入值
+              value = (field.element as HTMLInputElement).value;
               break;
           }
           

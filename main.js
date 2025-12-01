@@ -190,45 +190,140 @@ var EntityModal = class extends import_obsidian.Modal {
             label.textContent = displayName2;
             label.style.marginBottom = "5px";
             label.style.fontWeight = "bold";
-            let inputElement;
-            switch (propertyType) {
-              case "Checkbox":
-                inputElement = document.createElement("input");
-                inputElement.type = "checkbox";
-                break;
-              case "Date":
-                inputElement = document.createElement("input");
-                inputElement.type = "date";
-                break;
-              case "Date & time":
-                inputElement = document.createElement("input");
-                inputElement.type = "datetime-local";
-                break;
-              case "List":
-                inputElement = document.createElement("select");
-                const defaultOption = document.createElement("option");
-                defaultOption.value = "";
-                defaultOption.textContent = "Select a value";
-                inputElement.appendChild(defaultOption);
-                break;
-              case "Number":
-                inputElement = document.createElement("input");
-                inputElement.type = "number";
-                break;
-              case "Text":
-              default:
-                inputElement = document.createElement("input");
-                inputElement.type = "text";
-                inputElement.placeholder = `Enter ${property}`;
-                break;
+            if (propertyType === "Checkbox") {
+              const checkboxContainer = controlContainer.createEl("div");
+              checkboxContainer.style.display = "flex";
+              checkboxContainer.style.alignItems = "center";
+              checkboxContainer.style.gap = "8px";
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              checkbox.style.margin = "0";
+              const checkboxLabel = document.createElement("label");
+              checkboxLabel.textContent = "Yes";
+              checkboxLabel.style.cursor = "pointer";
+              checkboxLabel.style.userSelect = "none";
+              checkboxContainer.appendChild(checkbox);
+              checkboxContainer.appendChild(checkboxLabel);
+              this.inputFields[property] = { type: propertyType, element: checkbox };
+            } else if (propertyType === "List") {
+              const listContainer = controlContainer.createEl("div");
+              listContainer.style.display = "flex";
+              listContainer.style.flexDirection = "column";
+              listContainer.style.gap = "8px";
+              const valuesContainer = listContainer.createEl("div");
+              valuesContainer.style.display = "flex";
+              valuesContainer.style.flexDirection = "column";
+              valuesContainer.style.gap = "4px";
+              const addContainer = listContainer.createEl("div");
+              addContainer.style.display = "flex";
+              addContainer.style.gap = "8px";
+              const newInput = document.createElement("input");
+              newInput.type = "text";
+              newInput.placeholder = `Add ${property}`;
+              newInput.style.flex = "1";
+              newInput.style.padding = "8px";
+              newInput.style.border = "1px solid var(--background-modifier-border)";
+              newInput.style.borderRadius = "4px";
+              newInput.style.background = "var(--background-primary)";
+              newInput.style.color = "var(--text-normal)";
+              const addButton = document.createElement("button");
+              addButton.type = "button";
+              addButton.textContent = "Add";
+              addButton.style.padding = "8px 16px";
+              addButton.style.border = "1px solid var(--background-modifier-border)";
+              addButton.style.borderRadius = "4px";
+              addButton.style.background = "var(--background-secondary)";
+              addButton.style.color = "var(--text-normal)";
+              addButton.style.cursor = "pointer";
+              addContainer.appendChild(newInput);
+              addContainer.appendChild(addButton);
+              const values = [];
+              const addValue = (value) => {
+                if (value.trim() && !values.includes(value.trim())) {
+                  const valueItem = valuesContainer.createEl("div");
+                  valueItem.style.display = "flex";
+                  valueItem.style.alignItems = "center";
+                  valueItem.style.gap = "8px";
+                  const valueText = document.createElement("span");
+                  valueText.textContent = value.trim();
+                  valueText.style.flex = "1";
+                  valueText.style.padding = "4px 8px";
+                  valueText.style.border = "1px solid var(--background-modifier-border)";
+                  valueText.style.borderRadius = "4px";
+                  valueText.style.background = "var(--background-secondary)";
+                  const removeButton = document.createElement("button");
+                  removeButton.type = "button";
+                  removeButton.textContent = "\xD7";
+                  removeButton.style.width = "24px";
+                  removeButton.style.height = "24px";
+                  removeButton.style.display = "flex";
+                  removeButton.style.alignItems = "center";
+                  removeButton.style.justifyContent = "center";
+                  removeButton.style.border = "1px solid var(--background-modifier-border)";
+                  removeButton.style.borderRadius = "4px";
+                  removeButton.style.background = "var(--background-secondary)";
+                  removeButton.style.color = "var(--text-normal)";
+                  removeButton.style.cursor = "pointer";
+                  removeButton.style.fontSize = "16px";
+                  removeButton.style.lineHeight = "1";
+                  const removeValue = () => {
+                    const index = values.indexOf(value.trim());
+                    if (index > -1) {
+                      values.splice(index, 1);
+                    }
+                    valueItem.remove();
+                  };
+                  removeButton.addEventListener("click", removeValue);
+                  valueItem.appendChild(valueText);
+                  valueItem.appendChild(removeButton);
+                  values.push(value.trim());
+                }
+              };
+              addButton.addEventListener("click", () => {
+                addValue(newInput.value);
+                newInput.value = "";
+              });
+              newInput.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") {
+                  addValue(newInput.value);
+                  newInput.value = "";
+                }
+              });
+              this.inputFields[property] = {
+                type: propertyType,
+                addValue,
+                getValues: () => values
+              };
+            } else {
+              let inputElement;
+              switch (propertyType) {
+                case "Date":
+                  inputElement = document.createElement("input");
+                  inputElement.type = "date";
+                  break;
+                case "Date & time":
+                  inputElement = document.createElement("input");
+                  inputElement.type = "datetime-local";
+                  break;
+                case "Number":
+                  inputElement = document.createElement("input");
+                  inputElement.type = "number";
+                  break;
+                case "Text":
+                default:
+                  inputElement = document.createElement("input");
+                  inputElement.type = "text";
+                  inputElement.placeholder = `Enter ${property}`;
+                  break;
+              }
+              inputElement.style.padding = "8px";
+              inputElement.style.border = "1px solid var(--background-modifier-border)";
+              inputElement.style.borderRadius = "4px";
+              inputElement.style.background = "var(--background-primary)";
+              inputElement.style.color = "var(--text-normal)";
+              controlContainer.appendChild(inputElement);
+              this.inputFields[property] = { type: propertyType, element: inputElement };
             }
-            inputElement.style.padding = "8px";
-            inputElement.style.border = "1px solid var(--background-modifier-border)";
-            inputElement.style.borderRadius = "4px";
-            inputElement.style.background = "var(--background-primary)";
-            inputElement.style.color = "var(--text-normal)";
-            controlContainer.appendChild(inputElement);
-            this.inputFields[property] = { type: propertyType, element: inputElement };
           } catch (error) {
             console.error(`Error creating control for property ${property}:`, error);
             throw error;
@@ -261,23 +356,27 @@ var EntityModal = class extends import_obsidian.Modal {
           e.preventDefault();
           const result = {};
           this.templateProperties.forEach((property) => {
-            const { type, element } = this.inputFields[property];
+            const field = this.inputFields[property];
+            const { type } = field;
             let value;
             switch (type) {
               case "Checkbox":
-                value = element.checked ? "true" : "false";
+                value = field.element.checked ? "true" : "false";
+                break;
+              case "List":
+                const values = field.getValues();
+                if (values.length === 0) {
+                  value = "";
+                } else {
+                  value = "\n" + values.map((v) => `  - "${v}"`).join("\n");
+                }
                 break;
               case "Date":
               case "Date & time":
               case "Number":
               case "Text":
-                value = element.value;
-                break;
-              case "List":
-                value = element.value;
-                break;
               default:
-                value = element.value;
+                value = field.element.value;
                 break;
             }
             result[property] = value;
