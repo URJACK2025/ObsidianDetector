@@ -10,6 +10,7 @@ A powerful Obsidian plugin that allows you to create entity notes with dynamic f
 - **Command-Based Creation**: Create entities using Obsidian's command palette
 - **Template-Driven**: Uses YAML front matter templates to define entity properties
 - **Customizable Property Mappings**: Map template properties to user-friendly display names
+- **Multiple Property Types**: Support for various property types including Text, Number, Date, Date & time, Checkbox, List, Enum, and Citation
 
 ### 🎨 User Experience
 - **Tabbed Settings Page**: Configure each entity type independently using tabs
@@ -23,6 +24,18 @@ A powerful Obsidian plugin that allows you to create entity notes with dynamic f
 - **Template Support**: Use your own templates for each entity type
 - **Automatic Folder Creation**: Creates folders if they don't exist
 - **Descriptive File Names**: Uses entity names for file names when available
+
+### 🔗 Entity Relationships
+- **Citation Support**: Create relationships between entities using Obsidian's internal links [[...]]
+- **Enum Property Type**: Define fixed sets of options for properties
+- **List Property Type**: Support for multiple values in a single property
+- **Dynamic Search**: Search and select related entities with auto-completion
+
+### 🛠️ Developer Experience
+- **Modular Codebase**: Well-organized code structure with clear separation of concerns
+- **TypeScript Support**: Full TypeScript support for better development experience
+- **Easy Extension**: Simple architecture for adding new property types
+- **Comprehensive Documentation**: Detailed README with usage instructions and version history
 
 ## Installation
 
@@ -87,28 +100,39 @@ The plugin will generate input fields for all properties except `entity-type`.
 
 ## Version History
 
-### v1.4.0 (Latest)
-- **Shared Property Mappings**: Moved property mappings outside of tabs, shared across all entities
-- **Delete Mapping Support**: Added ability to delete property mappings
-- **Improved Settings Organization**: Cleaner settings page with better separation of concerns
-- **Backward Compatibility**: Support for migrating settings from older versions
+### v1.0.7 (Latest)
+- **Enum Property Type**: Added support for Enum property type based on Obsidian's Text
+- **Citation Property Type**: Added support for Citation property type for entity relationships
+- **Multiple Property Types**: Added support for Checkbox, Date, Date & time, List, Number, Text, Enum, and Citation types
+- **Dynamic Search**: Implemented search functionality for Citation type properties
+- **Improved Property Configuration**: Enhanced settings page for property type configuration
 
-### v1.3.0
+### v1.0.6
+- **BUG Fix**: Fixed issues with basic property functionality
+- **Enhanced Error Handling**: Improved error handling for property types
+- **Code Optimization**: Optimized code for better performance
+
+### v1.0.5
+- **Dynamic Property Support**: Added support for dynamic properties
+- **Improved Form Generation**: Enhanced form generation logic
+
+### v1.0.4
+- **Code Modularization**: Refactored codebase into modular structure
+- **Improved Code Organization**: Better separation of concerns
+- **Enhanced Maintainability**: Easier to extend and maintain
+
+### v1.0.3
+- **Setting Mappings Modification**: Updated property mapping settings
+- **Manifest File Updates**: Updated plugin metadata
+
+### v1.0.2
 - **Multiple Entity Types**: Added support for Person, Organization, Location, and Country entities
-- **Tabbed Settings Page**: Implemented tabbed interface for entity-specific configuration
 - **Entity-Specific Commands**: Added commands for each entity type
 - **Entity-Specific Templates**: Support for different templates per entity type
 
-### v1.2.0
-- **Dynamic Form Generation**: Automatically generates input fields based on template files
-- **Property Mapping Configuration**: Added ability to map property names to display names
-- **Improved Template Handling**: Better template parsing and error handling
-- **Enhanced Error Messages**: More descriptive error messages for better debugging
-
-### v1.1.0
-- **Template Path Configuration**: Added ability to configure template file path
-- **Improved Error Handling**: Better handling of missing template files
-- **Enhanced Logging**: More detailed logging for debugging
+### v1.0.1
+- **Enhanced Template Handling**: Better template parsing and error handling
+- **Improved Error Messages**: More descriptive error messages for better debugging
 
 ### v1.0.0
 - **Initial Release**: Basic Event entity creation functionality

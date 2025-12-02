@@ -205,6 +205,151 @@ var EntityModal = class extends import_obsidian.Modal {
               checkboxContainer.appendChild(checkbox);
               checkboxContainer.appendChild(checkboxLabel);
               this.inputFields[property] = { type: propertyType, element: checkbox };
+            } else if (propertyType === "Citation") {
+              const citationConfig = (propertyMapping == null ? void 0 : propertyMapping.citationConfig) || { propertyName: "entity-type", propertyValue: "" };
+              const citationContainer = controlContainer.createEl("div");
+              citationContainer.style.display = "flex";
+              citationContainer.style.flexDirection = "column";
+              citationContainer.style.gap = "8px";
+              const searchContainer = citationContainer.createEl("div");
+              searchContainer.style.display = "flex";
+              searchContainer.style.gap = "8px";
+              const searchInput = searchContainer.createEl("input");
+              searchInput.type = "text";
+              searchInput.placeholder = `Search ${property}`;
+              searchInput.style.flex = "1";
+              searchInput.style.padding = "8px";
+              searchInput.style.border = "1px solid var(--background-modifier-border)";
+              searchInput.style.borderRadius = "4px";
+              searchInput.style.background = "var(--background-primary)";
+              searchInput.style.color = "var(--text-normal)";
+              const searchButton = searchContainer.createEl("button", { text: "Search" });
+              searchButton.type = "button";
+              searchButton.style.padding = "8px 16px";
+              searchButton.style.border = "1px solid var(--background-modifier-border)";
+              searchButton.style.borderRadius = "4px";
+              searchButton.style.background = "var(--background-secondary)";
+              searchButton.style.color = "var(--text-normal)";
+              searchButton.style.cursor = "pointer";
+              const resultsContainer = citationContainer.createEl("div");
+              resultsContainer.style.maxHeight = "200px";
+              resultsContainer.style.overflowY = "auto";
+              resultsContainer.style.border = "1px solid var(--background-modifier-border)";
+              resultsContainer.style.borderRadius = "4px";
+              resultsContainer.style.padding = "8px";
+              resultsContainer.style.background = "var(--background-primary)";
+              resultsContainer.style.display = "none";
+              const selectedContainer = citationContainer.createEl("div");
+              selectedContainer.style.display = "flex";
+              selectedContainer.style.flexDirection = "column";
+              selectedContainer.style.gap = "4px";
+              const selectedCitations = [];
+              const searchCitations = () => __async(this, null, function* () {
+                const searchTerm = searchInput.value.trim();
+                resultsContainer.innerHTML = "";
+                resultsContainer.style.display = "block";
+                if (!searchTerm) {
+                  resultsContainer.createEl("div", { text: "Please enter a search term" });
+                  return;
+                }
+                try {
+                  console.log("Searching citations with term:", searchTerm);
+                  console.log("Citation config:", citationConfig);
+                  const query = `${searchTerm} [${citationConfig.propertyName}:${citationConfig.propertyValue}]`;
+                  console.log("Built search query:", query);
+                  const allFiles = this.app.vault.getFiles();
+                  console.log("Total files found:", allFiles.length);
+                  const filteredFiles = allFiles.filter((file) => {
+                    if (!file.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+                      return false;
+                    }
+                    if (file.extension === "md") {
+                      return true;
+                    }
+                    return false;
+                  });
+                  console.log("Filtered files:", filteredFiles.length);
+                  if (filteredFiles.length === 0) {
+                    resultsContainer.createEl("div", { text: "No results found" });
+                    return;
+                  }
+                  filteredFiles.forEach((file) => {
+                    const resultItem = resultsContainer.createEl("div");
+                    resultItem.style.padding = "8px";
+                    resultItem.style.borderBottom = "1px solid var(--background-modifier-border)";
+                    resultItem.style.cursor = "pointer";
+                    resultItem.style.borderRadius = "4px";
+                    resultItem.style.transition = "background-color 0.2s";
+                    const fileName = file.name.replace(/\.md$/, "");
+                    resultItem.textContent = fileName;
+                    resultItem.addEventListener("mouseenter", () => {
+                      resultItem.style.background = "var(--background-secondary)";
+                    });
+                    resultItem.addEventListener("mouseleave", () => {
+                      resultItem.style.background = "transparent";
+                    });
+                    resultItem.addEventListener("click", () => {
+                      const notePath = file.path;
+                      if (!selectedCitations.includes(notePath)) {
+                        selectedCitations.push(notePath);
+                        renderSelectedCitations();
+                      }
+                      resultsContainer.style.display = "none";
+                    });
+                  });
+                } catch (error) {
+                  console.error("Error searching citations:", error);
+                  console.error("Error details:", JSON.stringify(error, null, 2));
+                  resultsContainer.createEl("div", { text: `Error searching citations: ${error.message}` });
+                }
+              });
+              const renderSelectedCitations = () => {
+                selectedContainer.innerHTML = "";
+                selectedCitations.forEach((citation, index) => {
+                  const citationItem = selectedContainer.createEl("div");
+                  citationItem.style.display = "flex";
+                  citationItem.style.alignItems = "center";
+                  citationItem.style.gap = "8px";
+                  citationItem.style.padding = "4px 8px";
+                  citationItem.style.border = "1px solid var(--background-modifier-border)";
+                  citationItem.style.borderRadius = "4px";
+                  citationItem.style.background = "var(--background-secondary)";
+                  const citationText = citationItem.createEl("span");
+                  citationText.textContent = citation;
+                  citationText.style.flex = "1";
+                  const removeButton = citationItem.createEl("button", { text: "\xD7" });
+                  removeButton.type = "button";
+                  removeButton.style.width = "24px";
+                  removeButton.style.height = "24px";
+                  removeButton.style.display = "flex";
+                  removeButton.style.alignItems = "center";
+                  removeButton.style.justifyContent = "center";
+                  removeButton.style.border = "1px solid var(--background-modifier-border)";
+                  removeButton.style.borderRadius = "4px";
+                  removeButton.style.background = "var(--background-primary)";
+                  removeButton.style.color = "var(--text-normal)";
+                  removeButton.style.cursor = "pointer";
+                  removeButton.addEventListener("click", () => {
+                    selectedCitations.splice(index, 1);
+                    renderSelectedCitations();
+                  });
+                });
+              };
+              searchButton.addEventListener("click", searchCitations);
+              searchInput.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") {
+                  searchCitations();
+                }
+              });
+              document.addEventListener("click", (e) => {
+                if (!searchContainer.contains(e.target) && !resultsContainer.contains(e.target)) {
+                  resultsContainer.style.display = "none";
+                }
+              });
+              this.inputFields[property] = {
+                type: propertyType,
+                getValues: () => selectedCitations
+              };
             } else if (propertyType === "Enum") {
               const selectElement = document.createElement("select");
               selectElement.style.padding = "8px";
@@ -383,6 +528,14 @@ var EntityModal = class extends import_obsidian.Modal {
               case "Checkbox":
                 value = field.element.checked ? "true" : "false";
                 break;
+              case "Citation":
+                const citations = field.getValues();
+                if (citations.length === 0) {
+                  value = "";
+                } else {
+                  value = "\n" + citations.map((v) => `  - "[[${v}]]"`).join("\n");
+                }
+                break;
               case "Enum":
                 value = field.element.value;
                 break;
@@ -465,10 +618,16 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
         this.plugin.settings.propertyMappings[property].displayName = value;
         yield this.plugin.saveSettings();
         this.display();
-      }))).addDropdown((dropdown) => dropdown.addOption("Checkbox", "Checkbox").addOption("Date", "Date").addOption("Date & time", "Date & time").addOption("Enum", "Enum").addOption("List", "List").addOption("Number", "Number").addOption("Text", "Text").setValue(mapping.type).onChange((value) => __async(this, null, function* () {
+      }))).addDropdown((dropdown) => dropdown.addOption("Checkbox", "Checkbox").addOption("Citation", "Citation").addOption("Date", "Date").addOption("Date & time", "Date & time").addOption("Enum", "Enum").addOption("List", "List").addOption("Number", "Number").addOption("Text", "Text").setValue(mapping.type).onChange((value) => __async(this, null, function* () {
         this.plugin.settings.propertyMappings[property].type = value;
         if (value === "Enum" && !this.plugin.settings.propertyMappings[property].enumOptions) {
           this.plugin.settings.propertyMappings[property].enumOptions = [];
+        }
+        if (value === "Citation" && !this.plugin.settings.propertyMappings[property].citationConfig) {
+          this.plugin.settings.propertyMappings[property].citationConfig = {
+            propertyName: "entity-type",
+            propertyValue: ""
+          };
         }
         yield this.plugin.saveSettings();
         this.display();
@@ -545,9 +704,63 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
             this.display();
           }));
         });
+      } else if (mapping.type === "Citation") {
+        if (!mapping.citationConfig) {
+          mapping.citationConfig = {
+            propertyName: "entity-type",
+            propertyValue: ""
+          };
+        }
+        const citationContainer = containerEl.createEl("div");
+        citationContainer.style.marginLeft = "20px";
+        citationContainer.style.marginBottom = "10px";
+        citationContainer.style.padding = "10px";
+        citationContainer.style.border = "1px solid var(--background-modifier-border)";
+        citationContainer.style.borderRadius = "4px";
+        citationContainer.style.background = "var(--background-secondary)";
+        citationContainer.createEl("h4", { text: "Citation Configuration" });
+        const propertyNameContainer = citationContainer.createEl("div");
+        propertyNameContainer.style.display = "flex";
+        propertyNameContainer.style.alignItems = "center";
+        propertyNameContainer.style.gap = "8px";
+        propertyNameContainer.style.marginBottom = "8px";
+        propertyNameContainer.createEl("label", { text: "Property-Name:" });
+        const propertyNameInput = propertyNameContainer.createEl("input");
+        propertyNameInput.type = "text";
+        propertyNameInput.value = mapping.citationConfig.propertyName;
+        propertyNameInput.style.flex = "1";
+        propertyNameInput.style.padding = "8px";
+        propertyNameInput.style.border = "1px solid var(--background-modifier-border)";
+        propertyNameInput.style.borderRadius = "4px";
+        propertyNameInput.style.background = "var(--background-primary)";
+        propertyNameInput.style.color = "var(--text-normal)";
+        propertyNameInput.addEventListener("change", () => __async(this, null, function* () {
+          mapping.citationConfig.propertyName = propertyNameInput.value.trim();
+          yield this.plugin.saveSettings();
+          this.display();
+        }));
+        const propertyValueContainer = citationContainer.createEl("div");
+        propertyValueContainer.style.display = "flex";
+        propertyValueContainer.style.alignItems = "center";
+        propertyValueContainer.style.gap = "8px";
+        propertyValueContainer.createEl("label", { text: "Property-Value:" });
+        const propertyValueInput = propertyValueContainer.createEl("input");
+        propertyValueInput.type = "text";
+        propertyValueInput.value = mapping.citationConfig.propertyValue;
+        propertyValueInput.style.flex = "1";
+        propertyValueInput.style.padding = "8px";
+        propertyValueInput.style.border = "1px solid var(--background-modifier-border)";
+        propertyValueInput.style.borderRadius = "4px";
+        propertyValueInput.style.background = "var(--background-primary)";
+        propertyValueInput.style.color = "var(--text-normal)";
+        propertyValueInput.addEventListener("change", () => __async(this, null, function* () {
+          mapping.citationConfig.propertyValue = propertyValueInput.value.trim();
+          yield this.plugin.saveSettings();
+          this.display();
+        }));
       }
     });
-    const addMappingSetting = new import_obsidian2.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addDropdown((dropdown) => dropdown.addOption("Checkbox", "Checkbox").addOption("Date", "Date").addOption("Date & time", "Date & time").addOption("Enum", "Enum").addOption("List", "List").addOption("Number", "Number").addOption("Text", "Text").setValue("Text")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
+    const addMappingSetting = new import_obsidian2.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addDropdown((dropdown) => dropdown.addOption("Checkbox", "Checkbox").addOption("Citation", "Citation").addOption("Date", "Date").addOption("Date & time", "Date & time").addOption("Enum", "Enum").addOption("List", "List").addOption("Number", "Number").addOption("Text", "Text").setValue("Text")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
       const propertyInput = addMappingSetting.components[0];
       const displayNameInput = addMappingSetting.components[1];
       const typeDropdown = addMappingSetting.components[2];
@@ -561,6 +774,12 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
         };
         if (type === "Enum") {
           newMapping.enumOptions = [];
+        }
+        if (type === "Citation") {
+          newMapping.citationConfig = {
+            propertyName: "entity-type",
+            propertyValue: ""
+          };
         }
         this.plugin.settings.propertyMappings[property] = newMapping;
         yield this.plugin.saveSettings();

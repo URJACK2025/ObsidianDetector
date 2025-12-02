@@ -2,13 +2,20 @@
 export type EntityType = 'event' | 'person' | 'organization' | 'location' | 'country';
 
 // 属性类型枚举
-export type PropertyType = 'Checkbox' | 'Date' | 'Date & time' | 'Enum' | 'List' | 'Number' | 'Text';
+export type PropertyType = 'Checkbox' | 'Citation' | 'Date' | 'Date & time' | 'Enum' | 'List' | 'Number' | 'Text';
+
+// 引用配置接口
+export interface CitationConfig {
+  propertyName: string; // 属性名，用于检测匹配的属性名，例如entity-type
+  propertyValue: string; // 属性值，与propertyName组合，例如event
+}
 
 // 属性映射配置接口
 export interface PropertyMapping {
   displayName: string;
   type: PropertyType;
   enumOptions?: string[]; // Enum类型的可选值
+  citationConfig?: CitationConfig; // Citation类型的引用配置
 }
 
 // 单个实体配置接口

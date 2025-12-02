@@ -78,6 +78,7 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
           }))
         .addDropdown(dropdown => dropdown
           .addOption('Checkbox', 'Checkbox')
+          .addOption('Citation', 'Citation')
           .addOption('Date', 'Date')
           .addOption('Date & time', 'Date & time')
           .addOption('Enum', 'Enum')
@@ -90,6 +91,13 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
             // 如果从其他类型切换到Enum，初始化enumOptions数组
             if (value === 'Enum' && !this.plugin.settings.propertyMappings[property].enumOptions) {
               this.plugin.settings.propertyMappings[property].enumOptions = [];
+            }
+            // 如果从其他类型切换到Citation，初始化citationConfig对象
+            if (value === 'Citation' && !this.plugin.settings.propertyMappings[property].citationConfig) {
+              this.plugin.settings.propertyMappings[property].citationConfig = {
+                propertyName: 'entity-type',
+                propertyValue: ''
+              };
             }
             await this.plugin.saveSettings();
             // 重新渲染设置页面
@@ -189,6 +197,77 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
             this.display(); // 重新渲染设置页面
           });
         });
+      } 
+      // 如果是Citation类型，添加额外的配置组件
+      else if (mapping.type === 'Citation') {
+        // 确保citationConfig对象存在
+        if (!mapping.citationConfig) {
+          mapping.citationConfig = {
+            propertyName: 'entity-type',
+            propertyValue: ''
+          };
+        }
+        
+        // 创建Citation配置容器
+        const citationContainer = containerEl.createEl('div');
+        citationContainer.style.marginLeft = '20px';
+        citationContainer.style.marginBottom = '10px';
+        citationContainer.style.padding = '10px';
+        citationContainer.style.border = '1px solid var(--background-modifier-border)';
+        citationContainer.style.borderRadius = '4px';
+        citationContainer.style.background = 'var(--background-secondary)';
+        
+        // 创建Citation标题
+        citationContainer.createEl('h4', { text: 'Citation Configuration' });
+        
+        // 创建Property-Name输入框
+        const propertyNameContainer = citationContainer.createEl('div');
+        propertyNameContainer.style.display = 'flex';
+        propertyNameContainer.style.alignItems = 'center';
+        propertyNameContainer.style.gap = '8px';
+        propertyNameContainer.style.marginBottom = '8px';
+        
+        propertyNameContainer.createEl('label', { text: 'Property-Name:' });
+        const propertyNameInput = propertyNameContainer.createEl('input');
+        propertyNameInput.type = 'text';
+        propertyNameInput.value = mapping.citationConfig.propertyName;
+        propertyNameInput.style.flex = '1';
+        propertyNameInput.style.padding = '8px';
+        propertyNameInput.style.border = '1px solid var(--background-modifier-border)';
+        propertyNameInput.style.borderRadius = '4px';
+        propertyNameInput.style.background = 'var(--background-primary)';
+        propertyNameInput.style.color = 'var(--text-normal)';
+        
+        // Property-Name输入框变化事件
+        propertyNameInput.addEventListener('change', async () => {
+          mapping.citationConfig.propertyName = propertyNameInput.value.trim();
+          await this.plugin.saveSettings();
+          this.display(); // 重新渲染设置页面
+        });
+        
+        // 创建Property-Value输入框
+        const propertyValueContainer = citationContainer.createEl('div');
+        propertyValueContainer.style.display = 'flex';
+        propertyValueContainer.style.alignItems = 'center';
+        propertyValueContainer.style.gap = '8px';
+        
+        propertyValueContainer.createEl('label', { text: 'Property-Value:' });
+        const propertyValueInput = propertyValueContainer.createEl('input');
+        propertyValueInput.type = 'text';
+        propertyValueInput.value = mapping.citationConfig.propertyValue;
+        propertyValueInput.style.flex = '1';
+        propertyValueInput.style.padding = '8px';
+        propertyValueInput.style.border = '1px solid var(--background-modifier-border)';
+        propertyValueInput.style.borderRadius = '4px';
+        propertyValueInput.style.background = 'var(--background-primary)';
+        propertyValueInput.style.color = 'var(--text-normal)';
+        
+        // Property-Value输入框变化事件
+        propertyValueInput.addEventListener('change', async () => {
+          mapping.citationConfig.propertyValue = propertyValueInput.value.trim();
+          await this.plugin.saveSettings();
+          this.display(); // 重新渲染设置页面
+        });
       }
     });
 
@@ -204,6 +283,7 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
         .setValue(''))
       .addDropdown(dropdown => dropdown
         .addOption('Checkbox', 'Checkbox')
+        .addOption('Citation', 'Citation')
         .addOption('Date', 'Date')
         .addOption('Date & time', 'Date & time')
         .addOption('Enum', 'Enum')
@@ -230,6 +310,13 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
             // 如果是Enum类型，初始化enumOptions数组
             if (type === 'Enum') {
               newMapping.enumOptions = [];
+            }
+            // 如果是Citation类型，初始化citationConfig对象
+            if (type === 'Citation') {
+              newMapping.citationConfig = {
+                propertyName: 'entity-type',
+                propertyValue: ''
+              };
             }
             
             this.plugin.settings.propertyMappings[property] = newMapping;
