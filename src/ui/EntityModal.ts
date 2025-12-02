@@ -1,5 +1,5 @@
 import { App, Modal, TextComponent, TFile } from 'obsidian';
-import { EntityType, EntityCreatorSettings, ENTITY_DISPLAY_NAMES, PropertyType } from '../types';
+import { EntityType, EntityCreatorSettings, PropertyType, getEntityDisplayName } from '../types';
 import { getTemplateProperties, getDisplayName } from '../utils/yaml';
 
 // 实体创建弹窗
@@ -24,7 +24,7 @@ export class EntityModal extends Modal {
 
   async onOpen() {
     const { contentEl } = this;
-    const displayName = ENTITY_DISPLAY_NAMES[this.entityType];
+    const displayName = getEntityDisplayName(this.entityType, this.plugin.settings);
 
     // 设置标题
     contentEl.createEl('h2', { text: `Create Entity-${displayName}` });

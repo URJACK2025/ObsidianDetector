@@ -1,5 +1,5 @@
-// 实体类型枚举
-export type EntityType = 'event' | 'person' | 'organization' | 'location' | 'country';
+// 实体类型定义
+export type EntityType = string;
 
 // 属性类型枚举
 export type PropertyType = 'Checkbox' | 'Citation' | 'Date' | 'Date & time' | 'Enum' | 'List' | 'Number' | 'Text';
@@ -24,10 +24,18 @@ export interface EntityConfig {
   templatePath: string;
 }
 
+// 实体类型配置接口
+export interface EntityTypeConfig {
+  id: EntityType;
+  displayName: string;
+  config: EntityConfig;
+}
+
 // 插件设置接口
 export interface EntityCreatorSettings {
-  entities: Record<EntityType, EntityConfig>;
-  propertyMappings: Record<string, PropertyMapping>;
+  entityTypes: Record<EntityType, string>; // 实体类型id到显示名称的映射
+  entities: Record<EntityType, EntityConfig>; // 实体配置
+  propertyMappings: Record<string, PropertyMapping>; // 属性映射
 }
 
 // 默认属性映射
@@ -44,8 +52,8 @@ export const DEFAULT_PROPERTY_MAPPINGS: Record<string, PropertyMapping> = {
   'description': { displayName: '描述', type: 'Text' }
 };
 
-// 实体类型显示名称映射
-export const ENTITY_DISPLAY_NAMES: Record<EntityType, string> = {
+// 默认实体类型
+export const DEFAULT_ENTITY_TYPES: Record<EntityType, string> = {
   'event': 'Event',
   'person': 'Person',
   'organization': 'Organization',
@@ -54,7 +62,7 @@ export const ENTITY_DISPLAY_NAMES: Record<EntityType, string> = {
 };
 
 // 默认实体配置
-export const DEFAULT_ENTITY_CONFIGS: Record<EntityType, EntityConfig> = {
+export const DEFAULT_ENTITIES: Record<EntityType, EntityConfig> = {
   'event': {
     notePath: 'Events',
     templatePath: '_Templates/Temp-Event.md'
@@ -79,6 +87,12 @@ export const DEFAULT_ENTITY_CONFIGS: Record<EntityType, EntityConfig> = {
 
 // 默认设置
 export const DEFAULT_SETTINGS: EntityCreatorSettings = {
-  entities: DEFAULT_ENTITY_CONFIGS,
+  entityTypes: DEFAULT_ENTITY_TYPES,
+  entities: DEFAULT_ENTITIES,
   propertyMappings: DEFAULT_PROPERTY_MAPPINGS
+};
+
+// 获取实体显示名称
+export function getEntityDisplayName(entityType: EntityType, settings: EntityCreatorSettings): string {
+  return settings.entityTypes[entityType] || entityType;
 };

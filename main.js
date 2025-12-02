@@ -1,8 +1,6 @@
 var __create = Object.create;
 var __defProp = Object.defineProperty;
-var __defProps = Object.defineProperties;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getOwnPropSymbols = Object.getOwnPropertySymbols;
 var __getProtoOf = Object.getPrototypeOf;
@@ -20,7 +18,6 @@ var __spreadValues = (a, b) => {
     }
   return a;
 };
-var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
 var __export = (target, all) => {
   __markAsModule(target);
@@ -78,14 +75,14 @@ var DEFAULT_PROPERTY_MAPPINGS = {
   "code": { displayName: "\u4EE3\u7801", type: "Text" },
   "description": { displayName: "\u63CF\u8FF0", type: "Text" }
 };
-var ENTITY_DISPLAY_NAMES = {
+var DEFAULT_ENTITY_TYPES = {
   "event": "Event",
   "person": "Person",
   "organization": "Organization",
   "location": "Location",
   "country": "Country"
 };
-var DEFAULT_ENTITY_CONFIGS = {
+var DEFAULT_ENTITIES = {
   "event": {
     notePath: "Events",
     templatePath: "_Templates/Temp-Event.md"
@@ -107,6 +104,9 @@ var DEFAULT_ENTITY_CONFIGS = {
     templatePath: "_Templates/Temp-Country.md"
   }
 };
+function getEntityDisplayName(entityType, settings) {
+  return settings.entityTypes[entityType] || entityType;
+}
 
 // src/ui/EntityModal.ts
 var import_obsidian = __toModule(require("obsidian"));
@@ -154,7 +154,7 @@ var EntityModal = class extends import_obsidian.Modal {
   onOpen() {
     return __async(this, null, function* () {
       const { contentEl } = this;
-      const displayName = ENTITY_DISPLAY_NAMES[this.entityType];
+      const displayName = getEntityDisplayName(this.entityType, this.plugin.settings);
       contentEl.createEl("h2", { text: `Create Entity-${displayName}` });
       try {
         const entityConfig = this.plugin.settings.entities[this.entityType];
@@ -580,7 +580,7 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
-    this.activeTab = "event";
+    this.activeTab = Object.keys(plugin.settings.entityTypes)[0] || "event";
   }
   display() {
     const { containerEl } = this;
@@ -596,9 +596,7 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
     tabNav.style.borderBottom = "1px solid var(--background-modifier-border)";
     tabNav.style.paddingBottom = "5px";
     const tabContent = tabContainer.createEl("div");
-    Object.keys(ENTITY_DISPLAY_NAMES).forEach((entityTypeStr) => {
-      const entityType = entityTypeStr;
-      const displayName = ENTITY_DISPLAY_NAMES[entityType];
+    Object.entries(this.plugin.settings.entityTypes).forEach(([entityType, displayName]) => {
       const tabButton = tabNav.createEl("button", { text: displayName });
       tabButton.style.padding = "5px 10px";
       tabButton.style.border = "1px solid var(--background-modifier-border)";
@@ -611,6 +609,37 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
       });
     });
     this.renderTabContent(tabContent, this.activeTab);
+    containerEl.createEl("h3", { text: "Entity Types Management" });
+    containerEl.createEl("p", { text: "Add, edit, and delete entity types" });
+    Object.entries(this.plugin.settings.entityTypes).forEach(([entityType, displayName]) => {
+      const setting = new import_obsidian2.Setting(containerEl).setName(entityType).setDesc(`Display name: ${displayName}`).addText((text) => text.setValue(displayName).onChange((value) => __async(this, null, function* () {
+        this.plugin.settings.entityTypes[entityType] = value;
+        yield this.plugin.saveSettings();
+        this.display();
+      }))).addButton((button) => button.setButtonText("Delete").setWarning().onClick(() => __async(this, null, function* () {
+        delete this.plugin.settings.entityTypes[entityType];
+        delete this.plugin.settings.entities[entityType];
+        yield this.plugin.saveSettings();
+        this.display();
+      })));
+    });
+    const addEntityTypeSetting = new import_obsidian2.Setting(containerEl).setName("Add New Entity Type").setDesc("Add a new entity type").addText((text) => text.setPlaceholder("entity-type-id").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
+      const entityTypeIdInput = addEntityTypeSetting.components[0];
+      const displayNameInput = addEntityTypeSetting.components[1];
+      const entityTypeId = entityTypeIdInput.getValue().trim();
+      const displayName = displayNameInput.getValue().trim();
+      if (entityTypeId && displayName) {
+        this.plugin.settings.entityTypes[entityTypeId] = displayName;
+        this.plugin.settings.entities[entityTypeId] = {
+          notePath: displayName,
+          templatePath: `_Templates/Temp-${displayName}.md`
+        };
+        yield this.plugin.saveSettings();
+        entityTypeIdInput.setValue("");
+        displayNameInput.setValue("");
+        this.display();
+      }
+    })));
     containerEl.createEl("h3", { text: "Property Mappings" });
     containerEl.createEl("p", { text: "Map template properties to display names in the modal (shared by all entities)" });
     Object.entries(this.plugin.settings.propertyMappings).forEach(([property, mapping]) => {
@@ -791,7 +820,7 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
     })));
   }
   renderTabContent(containerEl, entityType) {
-    const displayName = ENTITY_DISPLAY_NAMES[entityType];
+    const displayName = this.plugin.settings.entityTypes[entityType];
     const entityConfig = this.plugin.settings.entities[entityType];
     if (!entityConfig) {
       containerEl.createEl("div", { text: `No configuration found for ${displayName}` });
@@ -814,20 +843,22 @@ var EntityCreatorPlugin = class extends import_obsidian3.Plugin {
   onload() {
     return __async(this, null, function* () {
       yield this.loadSettings();
-      Object.keys(DEFAULT_ENTITY_CONFIGS).forEach((entityTypeStr) => {
-        const entityType = entityTypeStr;
-        const displayName = ENTITY_DISPLAY_NAMES[entityType];
-        this.addCommand({
-          id: `create-entity-${entityType}`,
-          name: `Create Entity-${displayName}`,
-          callback: () => {
-            new EntityModal(this.app, this, entityType, (result) => __async(this, null, function* () {
-              yield this.createEntityNote(entityType, result);
-            })).open();
-          }
-        });
-      });
+      this.registerEntityCommands();
       this.addSettingTab(new EntityCreatorSettingTab(this.app, this));
+    });
+  }
+  registerEntityCommands() {
+    Object.keys(this.settings.entityTypes).forEach((entityType) => {
+      const displayName = this.settings.entityTypes[entityType];
+      this.addCommand({
+        id: `create-entity-${entityType}`,
+        name: `Create Entity-${displayName}`,
+        callback: () => {
+          new EntityModal(this.app, this, entityType, (result) => __async(this, null, function* () {
+            yield this.createEntityNote(entityType, result);
+          })).open();
+        }
+      });
     });
   }
   onunload() {
@@ -838,25 +869,15 @@ var EntityCreatorPlugin = class extends import_obsidian3.Plugin {
     return __async(this, null, function* () {
       const loadedSettings = yield this.loadData();
       this.settings = {
-        entities: {
-          event: DEFAULT_ENTITY_CONFIGS.event,
-          person: DEFAULT_ENTITY_CONFIGS.person,
-          organization: DEFAULT_ENTITY_CONFIGS.organization,
-          location: DEFAULT_ENTITY_CONFIGS.location,
-          country: DEFAULT_ENTITY_CONFIGS.country
-        },
+        entityTypes: __spreadValues({}, DEFAULT_ENTITY_TYPES),
+        entities: __spreadValues({}, DEFAULT_ENTITIES),
         propertyMappings: __spreadValues({}, DEFAULT_PROPERTY_MAPPINGS)
       };
+      if (loadedSettings == null ? void 0 : loadedSettings.entityTypes) {
+        this.settings.entityTypes = __spreadValues(__spreadValues({}, this.settings.entityTypes), loadedSettings.entityTypes);
+      }
       if (loadedSettings == null ? void 0 : loadedSettings.entities) {
-        Object.keys(DEFAULT_ENTITY_CONFIGS).forEach((entityTypeStr) => {
-          const entityType = entityTypeStr;
-          if (loadedSettings.entities[entityType]) {
-            this.settings.entities[entityType] = __spreadProps(__spreadValues({}, this.settings.entities[entityType]), {
-              notePath: loadedSettings.entities[entityType].notePath || this.settings.entities[entityType].notePath,
-              templatePath: loadedSettings.entities[entityType].templatePath || this.settings.entities[entityType].templatePath
-            });
-          }
-        });
+        this.settings.entities = __spreadValues(__spreadValues({}, this.settings.entities), loadedSettings.entities);
       }
       if (loadedSettings == null ? void 0 : loadedSettings.propertyMappings) {
         this.settings.propertyMappings = __spreadValues(__spreadValues({}, this.settings.propertyMappings), loadedSettings.propertyMappings);
@@ -875,6 +896,7 @@ var EntityCreatorPlugin = class extends import_obsidian3.Plugin {
   saveSettings() {
     return __async(this, null, function* () {
       yield this.saveData(this.settings);
+      this.registerEntityCommands();
     });
   }
   createEntityNote(entityType, data) {

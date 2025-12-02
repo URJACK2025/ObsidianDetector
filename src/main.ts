@@ -1,5 +1,5 @@
 import { App, Plugin, TFile } from 'obsidian';
-import { EntityType, EntityCreatorSettings, DEFAULT_ENTITY_CONFIGS, DEFAULT_PROPERTY_MAPPINGS, DEFAULT_SETTINGS, ENTITY_DISPLAY_NAMES } from './types';
+import { EntityType, EntityCreatorSettings, DEFAULT_ENTITIES, DEFAULT_ENTITY_TYPES, DEFAULT_PROPERTY_MAPPINGS, DEFAULT_SETTINGS, getEntityDisplayName } from './types';
 import { EntityModal } from './ui/EntityModal';
 import { EntityCreatorSettingTab } from './ui/EntityCreatorSettingTab';
 
@@ -11,9 +11,17 @@ class EntityCreatorPlugin extends Plugin {
     await this.loadSettings();
 
     // 为每个实体类型注册命令
-    Object.keys(DEFAULT_ENTITY_CONFIGS).forEach((entityTypeStr) => {
-      const entityType = entityTypeStr as EntityType;
-      const displayName = ENTITY_DISPLAY_NAMES[entityType];
+    this.registerEntityCommands();
+
+    // 注册配置页面
+    this.addSettingTab(new EntityCreatorSettingTab(this.app, this));
+  }
+
+  // 注册实体命令
+  registerEntityCommands() {
+    // 为每个实体类型注册命令
+    Object.keys(this.settings.entityTypes).forEach((entityType) => {
+      const displayName = this.settings.entityTypes[entityType];
       this.addCommand({
         id: `create-entity-${entityType}`,
         name: `Create Entity-${displayName}`,
@@ -24,9 +32,6 @@ class EntityCreatorPlugin extends Plugin {
         }
       });
     });
-
-    // 注册配置页面
-    this.addSettingTab(new EntityCreatorSettingTab(this.app, this));
   }
 
   async onunload() {
@@ -37,29 +42,25 @@ class EntityCreatorPlugin extends Plugin {
     const loadedSettings = await this.loadData();
     // 合并默认配置和加载的配置
     this.settings = {
-      entities: {
-        event: DEFAULT_ENTITY_CONFIGS.event,
-        person: DEFAULT_ENTITY_CONFIGS.person,
-        organization: DEFAULT_ENTITY_CONFIGS.organization,
-        location: DEFAULT_ENTITY_CONFIGS.location,
-        country: DEFAULT_ENTITY_CONFIGS.country
-      },
+      entityTypes: { ...DEFAULT_ENTITY_TYPES },
+      entities: { ...DEFAULT_ENTITIES },
       propertyMappings: { ...DEFAULT_PROPERTY_MAPPINGS }
     };
     
+    // 合并加载的实体类型
+    if (loadedSettings?.entityTypes) {
+      this.settings.entityTypes = {
+        ...this.settings.entityTypes,
+        ...loadedSettings.entityTypes
+      };
+    }
+    
     // 合并加载的实体配置
     if (loadedSettings?.entities) {
-      Object.keys(DEFAULT_ENTITY_CONFIGS).forEach((entityTypeStr) => {
-        const entityType = entityTypeStr as EntityType;
-        if (loadedSettings.entities[entityType]) {
-          this.settings.entities[entityType] = {
-            ...this.settings.entities[entityType],
-            // 只合并notePath和templatePath，忽略旧的propertyMappings
-            notePath: loadedSettings.entities[entityType].notePath || this.settings.entities[entityType].notePath,
-            templatePath: loadedSettings.entities[entityType].templatePath || this.settings.entities[entityType].templatePath
-          };
-        }
-      });
+      this.settings.entities = {
+        ...this.settings.entities,
+        ...loadedSettings.entities
+      };
     }
     
     // 合并加载的propertyMappings
@@ -86,6 +87,8 @@ class EntityCreatorPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+    // 重新注册命令，以反映实体类型的变化
+    this.registerEntityCommands();
   }
 
   // 创建实体笔记

@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, TextComponent } from 'obsidian';
-import { EntityType, EntityCreatorSettings, ENTITY_DISPLAY_NAMES } from '../types';
+import { EntityType, EntityCreatorSettings } from '../types';
 
 // 配置页面
 export class EntityCreatorSettingTab extends PluginSettingTab {
@@ -10,7 +10,8 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: { settings: EntityCreatorSettings; saveSettings: () => Promise<void> }) {
     super(app, plugin as any);
     this.plugin = plugin;
-    this.activeTab = 'event'; // 默认激活Event选项卡
+    // 默认激活第一个实体类型选项卡
+    this.activeTab = Object.keys(plugin.settings.entityTypes)[0] || 'event';
   }
 
   display(): void {
@@ -37,10 +38,7 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
     const tabContent = tabContainer.createEl('div');
 
     // 为每个实体类型创建选项卡
-    Object.keys(ENTITY_DISPLAY_NAMES).forEach((entityTypeStr) => {
-      const entityType = entityTypeStr as EntityType;
-      const displayName = ENTITY_DISPLAY_NAMES[entityType];
-      
+    Object.entries(this.plugin.settings.entityTypes).forEach(([entityType, displayName]) => {
       // 创建选项卡按钮
       const tabButton = tabNav.createEl('button', { text: displayName });
       tabButton.style.padding = '5px 10px';
@@ -59,6 +57,69 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
     // 显示当前选项卡内容
     this.renderTabContent(tabContent, this.activeTab);
 
+    // 实体类型管理
+    containerEl.createEl('h3', { text: 'Entity Types Management' });
+    containerEl.createEl('p', { text: 'Add, edit, and delete entity types' });
+    
+    // 显示当前实体类型列表
+    Object.entries(this.plugin.settings.entityTypes).forEach(([entityType, displayName]) => {
+      const setting = new Setting(containerEl)
+        .setName(entityType)
+        .setDesc(`Display name: ${displayName}`)
+        .addText(text => text
+          .setValue(displayName)
+          .onChange(async (value) => {
+            this.plugin.settings.entityTypes[entityType] = value;
+            await this.plugin.saveSettings();
+            this.display(); // 重新渲染页面
+          }))
+        .addButton(button => button
+          .setButtonText('Delete')
+          .setWarning()
+          .onClick(async () => {
+            // 删除实体类型
+            delete this.plugin.settings.entityTypes[entityType];
+            // 删除对应的实体配置
+            delete this.plugin.settings.entities[entityType];
+            await this.plugin.saveSettings();
+            this.display(); // 重新渲染页面
+          }));
+    });
+    
+    // 添加新实体类型
+    const addEntityTypeSetting = new Setting(containerEl)
+      .setName('Add New Entity Type')
+      .setDesc('Add a new entity type')
+      .addText(text => text
+        .setPlaceholder('entity-type-id')
+        .setValue(''))
+      .addText(text2 => text2
+        .setPlaceholder('Display Name')
+        .setValue(''))
+      .addButton(button => button
+        .setButtonText('Add')
+        .onClick(async () => {
+          const entityTypeIdInput = addEntityTypeSetting.components[0] as TextComponent;
+          const displayNameInput = addEntityTypeSetting.components[1] as TextComponent;
+          const entityTypeId = entityTypeIdInput.getValue().trim();
+          const displayName = displayNameInput.getValue().trim();
+          
+          if (entityTypeId && displayName) {
+            // 添加实体类型
+            this.plugin.settings.entityTypes[entityTypeId] = displayName;
+            // 添加默认实体配置
+            this.plugin.settings.entities[entityTypeId] = {
+              notePath: displayName,
+              templatePath: `_Templates/Temp-${displayName}.md`
+            };
+            await this.plugin.saveSettings();
+            // 清空输入框
+            entityTypeIdInput.setValue('');
+            displayNameInput.setValue('');
+            this.display(); // 重新渲染页面
+          }
+        }));
+    
     // 属性映射设置（所有实体共用）
     containerEl.createEl('h3', { text: 'Property Mappings' });
     containerEl.createEl('p', { text: 'Map template properties to display names in the modal (shared by all entities)' });
@@ -333,7 +394,7 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
 
   // 渲染选项卡内容
   renderTabContent(containerEl: HTMLElement, entityType: EntityType): void {
-    const displayName = ENTITY_DISPLAY_NAMES[entityType];
+    const displayName = this.plugin.settings.entityTypes[entityType];
     const entityConfig = this.plugin.settings.entities[entityType];
     
     if (!entityConfig) {

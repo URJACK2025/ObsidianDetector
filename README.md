@@ -5,9 +5,9 @@ A powerful Obsidian plugin that allows you to create entity notes with dynamic f
 ## Features
 
 ### 🔧 Core Functionality
-- **Multiple Entity Types**: Support for Event, Person, Organization, Location, and Country entities
+- **Dynamic Entity Types**: Create and manage your own entity types, no longer limited to fixed types
 - **Dynamic Form Generation**: Automatically generates input fields based on template files
-- **Command-Based Creation**: Create entities using Obsidian's command palette
+- **Command-Based Creation**: Create entities using Obsidian's command palette with dynamically generated commands
 - **Template-Driven**: Uses YAML front matter templates to define entity properties
 - **Customizable Property Mappings**: Map template properties to user-friendly display names
 - **Multiple Property Types**: Support for various property types including Text, Number, Date, Date & time, Checkbox, List, Enum, and Citation
@@ -56,13 +56,27 @@ A powerful Obsidian plugin that allows you to create entity notes with dynamic f
 
 ### Available Commands
 
+Commands are dynamically generated based on configured entity types. For each entity type, a command will be available in the command palette with the format:
+
+- `Create Entity-{DisplayName}`: Create a new note for the specified entity type
+
+Example commands:
 - `Create Entity-Event`: Create a new Event note
 - `Create Entity-Person`: Create a new Person note
 - `Create Entity-Organization`: Create a new Organization note
-- `Create Entity-Location`: Create a new Location note
-- `Create Entity-Country`: Create a new Country note
+
+The actual commands available depend on the entity types you have configured in the settings.
 
 ## Configuration
+
+### Entity Type Management
+
+The plugin now supports dynamic entity type management. You can add, edit, and delete entity types in the settings page:
+
+- **Add Entity Type**: Click "Add New Entity Type" to create a new entity type with a unique ID and display name
+- **Edit Entity Type**: Change the display name of existing entity types
+- **Delete Entity Type**: Remove entity types that are no longer needed
+- **Automatic Configuration**: When adding a new entity type, default configurations are created automatically
 
 ### Entity Settings
 
@@ -100,7 +114,14 @@ The plugin will generate input fields for all properties except `entity-type`.
 
 ## Version History
 
-### v1.0.7 (Latest)
+### v1.0.8 (Latest)
+- **Dynamic Entity Management**: Added support for dynamic entity types with CRUD operations
+- **Entity Type Management**: Users can now add, edit, and delete entity types in settings
+- **Dynamic Command Generation**: Commands are now generated based on configured entity types
+- **Improved Settings Page**: Added entity type management interface
+- **Backward Compatible**: Supports existing entity configurations
+
+### v1.0.7
 - **Enum Property Type**: Added support for Enum property type based on Obsidian's Text
 - **Citation Property Type**: Added support for Citation property type for entity relationships
 - **Multiple Property Types**: Added support for Checkbox, Date, Date & time, List, Number, Text, Enum, and Citation types
