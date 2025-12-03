@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, TextComponent } from 'obsidian';
+import { App, PluginSettingTab, Setting, TextComponent, Notice } from 'obsidian';
 import { EntityType, EntityCreatorSettings } from '../types';
 import { EntityTypeManager } from '../utils/EntityTypeManager';
 import { PropertyConfigRenderer } from './PropertyConfigRenderer';
@@ -86,6 +86,9 @@ export class EntityCreatorSettingTab extends PluginSettingTab {
             delete this.plugin.settings.entities[entityType];
             await this.plugin.saveSettings();
             this.display(); // 重新渲染页面
+            
+            // 通知用户需要重启插件以更新命令列表
+            new Notice('Please restart Obsidian or reload the plugin to update the command list.');
           }));
     });
     

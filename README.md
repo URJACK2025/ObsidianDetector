@@ -114,58 +114,43 @@ The plugin will generate input fields for all properties except `entity-type`.
 
 ## Version History
 
-### v1.0.9 (Latest)
-- **BUG Fix**: Fixed "Error loading template" issue when creating entities
-- **Code Fix**: Resolved naming inconsistency between `inputFields` and `inputControls`
-- **Improved Form Handling**: Fixed form submission logic for different property types
-- **Enhanced Error Messages**: Added more detailed error information for debugging
+### v1.1.0 (Latest)
+- **🔧 Core Functionality**
+  - Dynamic entity type management with CRUD operations
+  - Automatic command generation based on configured entity types
+  - Template-driven form generation with YAML front matter support
+  - Customizable property mappings with user-friendly display names
+  - Multiple property types: Checkbox, Citation, Date, Date & time, Enum, List, Number, Text
+  - Entity relationship support with Citation property type
+  - Configurable note paths and template files per entity type
 
-### v1.0.8
-- **Dynamic Entity Management**: Added support for dynamic entity types with CRUD operations
-- **Entity Type Management**: Users can now add, edit, and delete entity types in settings
-- **Dynamic Command Generation**: Commands are now generated based on configured entity types
-- **Improved Settings Page**: Added entity type management interface
-- **Backward Compatible**: Supports existing entity configurations
+- **🎨 User Experience**
+  - Tabbed settings page for independent entity type configuration
+  - Shared property mappings for consistent display across entities
+  - Real-time settings saving with automatic refresh
+  - Clear notifications for important actions like entity type deletion
+  - Improved error messages for better debugging
+  - Command palette integration with dynamically generated commands
 
-### v1.0.7
-- **Enum Property Type**: Added support for Enum property type based on Obsidian's Text
-- **Citation Property Type**: Added support for Citation property type for entity relationships
-- **Multiple Property Types**: Added support for Checkbox, Date, Date & time, List, Number, Text, Enum, and Citation types
-- **Dynamic Search**: Implemented search functionality for Citation type properties
-- **Improved Property Configuration**: Enhanced settings page for property type configuration
+- **🛠️ Technical Improvements**
+  - Modular codebase with better separation of concerns
+  - Enhanced error handling and form validation
+  - Optimized performance with code refactoring
+  - Backward compatible with existing configurations
+  - Robust command management with existence checks
+  - Better template parsing and property extraction
 
-### v1.0.6
-- **BUG Fix**: Fixed issues with basic property functionality
-- **Enhanced Error Handling**: Improved error handling for property types
-- **Code Optimization**: Optimized code for better performance
+- **🔗 Entity Relationships**
+  - Citation property type with dynamic search functionality
+  - Support for linking entities across notes
+  - Enum property type for predefined value sets
+  - List property type for multiple values
 
-### v1.0.5
-- **Dynamic Property Support**: Added support for dynamic properties
-- **Improved Form Generation**: Enhanced form generation logic
-
-### v1.0.4
-- **Code Modularization**: Refactored codebase into modular structure
-- **Improved Code Organization**: Better separation of concerns
-- **Enhanced Maintainability**: Easier to extend and maintain
-
-### v1.0.3
-- **Setting Mappings Modification**: Updated property mapping settings
-- **Manifest File Updates**: Updated plugin metadata
-
-### v1.0.2
-- **Multiple Entity Types**: Added support for Person, Organization, Location, and Country entities
-- **Entity-Specific Commands**: Added commands for each entity type
-- **Entity-Specific Templates**: Support for different templates per entity type
-
-### v1.0.1
-- **Enhanced Template Handling**: Better template parsing and error handling
-- **Improved Error Messages**: More descriptive error messages for better debugging
-
-### v1.0.0
-- **Initial Release**: Basic Event entity creation functionality
-- **Command-Based Creation**: Create events using Obsidian's command palette
-- **Template Support**: Uses YAML front matter templates
-- **Configurable Note Path**: Set where Event notes are created
+### v1.0.0 (Initial Release)
+- Basic Event entity creation functionality
+- Command-based creation using Obsidian's command palette
+- Template support with YAML front matter
+- Configurable note paths for entity notes
 
 ## Technical Implementation
 

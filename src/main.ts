@@ -6,6 +6,8 @@ import { EntityCreatorSettingTab } from './ui/EntityCreatorSettingTab';
 // 插件主类
 class EntityCreatorPlugin extends Plugin {
   settings!: EntityCreatorSettings; // 使用非空断言，确保在使用前已初始化
+  // 存储已注册的命令ID
+  registeredCommandIds: Set<string> = new Set();
 
   async onload() {
     await this.loadSettings();
@@ -26,6 +28,13 @@ class EntityCreatorPlugin extends Plugin {
         id: `create-entity-${entityType}`,
         name: `Create Entity-${displayName}`,
         callback: () => {
+          // 检查实体类型是否仍然存在
+          if (!this.settings.entityTypes[entityType]) {
+            // 如果实体类型不存在，重新注册命令（这会刷新命令列表）
+            this.registerEntityCommands();
+            return;
+          }
+          
           new EntityModal(this.app, this, entityType, async (result) => {
             await this.createEntityNote(entityType, result);
           }).open();

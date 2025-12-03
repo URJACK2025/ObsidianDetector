@@ -879,6 +879,7 @@ var EntityCreatorSettingTab = class extends import_obsidian3.PluginSettingTab {
         delete this.plugin.settings.entities[entityType];
         yield this.plugin.saveSettings();
         this.display();
+        new import_obsidian3.Notice("Please restart Obsidian or reload the plugin to update the command list.");
       })));
     });
     const addEntityTypeSetting = new import_obsidian3.Setting(containerEl).setName("Add New Entity Type").setDesc("Add a new entity type").addText((text) => text.setPlaceholder("entity-type-id").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
@@ -932,6 +933,10 @@ var EntityCreatorSettingTab = class extends import_obsidian3.PluginSettingTab {
 
 // src/main.ts
 var EntityCreatorPlugin = class extends import_obsidian4.Plugin {
+  constructor() {
+    super(...arguments);
+    this.registeredCommandIds = new Set();
+  }
   onload() {
     return __async(this, null, function* () {
       yield this.loadSettings();
@@ -946,6 +951,10 @@ var EntityCreatorPlugin = class extends import_obsidian4.Plugin {
         id: `create-entity-${entityType}`,
         name: `Create Entity-${displayName}`,
         callback: () => {
+          if (!this.settings.entityTypes[entityType]) {
+            this.registerEntityCommands();
+            return;
+          }
           new EntityModal(this.app, this, entityType, (result) => __async(this, null, function* () {
             yield this.createEntityNote(entityType, result);
           })).open();
