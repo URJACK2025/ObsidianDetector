@@ -114,7 +114,13 @@ The plugin will generate input fields for all properties except `entity-type`.
 
 ## Version History
 
-### v1.0.8 (Latest)
+### v1.0.9 (Latest)
+- **BUG Fix**: Fixed "Error loading template" issue when creating entities
+- **Code Fix**: Resolved naming inconsistency between `inputFields` and `inputControls`
+- **Improved Form Handling**: Fixed form submission logic for different property types
+- **Enhanced Error Messages**: Added more detailed error information for debugging
+
+### v1.0.8
 - **Dynamic Entity Management**: Added support for dynamic entity types with CRUD operations
 - **Entity Type Management**: Users can now add, edit, and delete entity types in settings
 - **Dynamic Command Generation**: Commands are now generated based on configured entity types

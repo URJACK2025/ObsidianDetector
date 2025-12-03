@@ -60,7 +60,7 @@ var __async = (__this, __arguments, generator) => {
 __export(exports, {
   default: () => main_default
 });
-var import_obsidian3 = __toModule(require("obsidian"));
+var import_obsidian4 = __toModule(require("obsidian"));
 
 // src/types.ts
 var DEFAULT_PROPERTY_MAPPINGS = {
@@ -104,9 +104,6 @@ var DEFAULT_ENTITIES = {
     templatePath: "_Templates/Temp-Country.md"
   }
 };
-function getEntityDisplayName(entityType, settings) {
-  return settings.entityTypes[entityType] || entityType;
-}
 
 // src/ui/EntityModal.ts
 var import_obsidian = __toModule(require("obsidian"));
@@ -141,11 +138,87 @@ function getDisplayName(property, mappings) {
   return ((_a = mappings[property]) == null ? void 0 : _a.displayName) || property;
 }
 
+// src/utils/EntityTypeManager.ts
+var EntityTypeManager = class {
+  static getEntityDisplayName(entityType, settings) {
+    return settings.entityTypes[entityType] || entityType;
+  }
+  static addEntityType(settings, entityTypeId, displayName) {
+    settings.entityTypes[entityTypeId] = displayName;
+    settings.entities[entityTypeId] = {
+      notePath: displayName,
+      templatePath: `_Templates/Temp-${displayName}.md`
+    };
+  }
+  static deleteEntityType(settings, entityType) {
+    delete settings.entityTypes[entityType];
+    delete settings.entities[entityType];
+  }
+  static updateEntityType(settings, entityType, displayName) {
+    settings.entityTypes[entityType] = displayName;
+  }
+  static getEntityTypes(settings) {
+    return Object.entries(settings.entityTypes);
+  }
+  static getEntityConfig(settings, entityType) {
+    return settings.entities[entityType];
+  }
+  static hasEntityType(settings, entityType) {
+    return entityType in settings.entityTypes;
+  }
+};
+
+// src/utils/PropertyValueFormatter.ts
+var PropertyValueFormatter = class {
+  static formatValue(type, value) {
+    switch (type) {
+      case "Checkbox":
+        return value ? "true" : "false";
+      case "Citation":
+        if (!value || value.length === 0) {
+          return "";
+        }
+        return "\n" + value.map((v) => `  - "[[${v}]]"`).join("\n");
+      case "Enum":
+        return value;
+      case "List":
+        if (!value || value.length === 0) {
+          return "";
+        }
+        return "\n" + value.map((v) => `  - "${v}"`).join("\n");
+      case "Date":
+      case "Date & time":
+      case "Number":
+      case "Text":
+      default:
+        return String(value);
+    }
+  }
+  static getValueFromElement(type, element) {
+    switch (type) {
+      case "Checkbox":
+        return element.checked;
+      case "Citation":
+        return element.getValues ? element.getValues() : [];
+      case "Enum":
+        return element.value;
+      case "List":
+        return element.getValues ? element.getValues() : [];
+      case "Date":
+      case "Date & time":
+      case "Number":
+      case "Text":
+      default:
+        return element.value;
+    }
+  }
+};
+
 // src/ui/EntityModal.ts
 var EntityModal = class extends import_obsidian.Modal {
   constructor(app, plugin, entityType, onSubmit) {
     super(app);
-    this.inputFields = {};
+    this.inputControls = {};
     this.templateProperties = [];
     this.plugin = plugin;
     this.entityType = entityType;
@@ -154,7 +227,7 @@ var EntityModal = class extends import_obsidian.Modal {
   onOpen() {
     return __async(this, null, function* () {
       const { contentEl } = this;
-      const displayName = getEntityDisplayName(this.entityType, this.plugin.settings);
+      const displayName = EntityTypeManager.getEntityDisplayName(this.entityType, this.plugin.settings);
       contentEl.createEl("h2", { text: `Create Entity-${displayName}` });
       try {
         const entityConfig = this.plugin.settings.entities[this.entityType];
@@ -204,7 +277,7 @@ var EntityModal = class extends import_obsidian.Modal {
               checkboxLabel.style.userSelect = "none";
               checkboxContainer.appendChild(checkbox);
               checkboxContainer.appendChild(checkboxLabel);
-              this.inputFields[property] = { type: propertyType, element: checkbox };
+              this.inputControls[property] = { type: propertyType, element: checkbox };
             } else if (propertyType === "Citation") {
               const citationConfig = (propertyMapping == null ? void 0 : propertyMapping.citationConfig) || { propertyName: "entity-type", propertyValue: "" };
               const citationContainer = controlContainer.createEl("div");
@@ -346,7 +419,7 @@ var EntityModal = class extends import_obsidian.Modal {
                   resultsContainer.style.display = "none";
                 }
               });
-              this.inputFields[property] = {
+              this.inputControls[property] = {
                 type: propertyType,
                 getValues: () => selectedCitations
               };
@@ -369,7 +442,7 @@ var EntityModal = class extends import_obsidian.Modal {
                 selectElement.appendChild(optionElement);
               });
               controlContainer.appendChild(selectElement);
-              this.inputFields[property] = { type: propertyType, element: selectElement };
+              this.inputControls[property] = { type: propertyType, element: selectElement };
             } else if (propertyType === "List") {
               const listContainer = controlContainer.createEl("div");
               listContainer.style.display = "flex";
@@ -454,7 +527,7 @@ var EntityModal = class extends import_obsidian.Modal {
                   newInput.value = "";
                 }
               });
-              this.inputFields[property] = {
+              this.inputControls[property] = {
                 type: propertyType,
                 addValue,
                 getValues: () => values
@@ -487,7 +560,7 @@ var EntityModal = class extends import_obsidian.Modal {
               inputElement.style.background = "var(--background-primary)";
               inputElement.style.color = "var(--text-normal)";
               controlContainer.appendChild(inputElement);
-              this.inputFields[property] = { type: propertyType, element: inputElement };
+              this.inputControls[property] = { type: propertyType, element: inputElement };
             }
           } catch (error) {
             console.error(`Error creating control for property ${property}:`, error);
@@ -521,41 +594,21 @@ var EntityModal = class extends import_obsidian.Modal {
           e.preventDefault();
           const result = {};
           this.templateProperties.forEach((property) => {
-            const field = this.inputFields[property];
-            const { type } = field;
+            const control = this.inputControls[property];
             let value;
-            switch (type) {
-              case "Checkbox":
-                value = field.element.checked ? "true" : "false";
-                break;
-              case "Citation":
-                const citations = field.getValues();
-                if (citations.length === 0) {
-                  value = "";
-                } else {
-                  value = "\n" + citations.map((v) => `  - "[[${v}]]"`).join("\n");
-                }
-                break;
-              case "Enum":
-                value = field.element.value;
-                break;
-              case "List":
-                const values = field.getValues();
-                if (values.length === 0) {
-                  value = "";
-                } else {
-                  value = "\n" + values.map((v) => `  - "${v}"`).join("\n");
-                }
-                break;
-              case "Date":
-              case "Date & time":
-              case "Number":
-              case "Text":
-              default:
-                value = field.element.value;
-                break;
+            if (control.getValues) {
+              value = control.getValues();
+            } else if (control.element) {
+              const element = control.element;
+              if (element.type === "checkbox") {
+                value = element.checked;
+              } else {
+                value = element.value;
+              }
+            } else {
+              value = "";
             }
-            result[property] = value;
+            result[property] = PropertyValueFormatter.formatValue(control.type, value);
           });
           this.onSubmit(result);
           this.close();
@@ -569,14 +622,219 @@ var EntityModal = class extends import_obsidian.Modal {
   onClose() {
     const { contentEl } = this;
     contentEl.empty();
-    this.inputFields = {};
+    this.inputControls = {};
     this.templateProperties = [];
   }
 };
 
 // src/ui/EntityCreatorSettingTab.ts
+var import_obsidian3 = __toModule(require("obsidian"));
+
+// src/ui/PropertyConfigRenderer.ts
 var import_obsidian2 = __toModule(require("obsidian"));
-var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
+
+// src/ui/PropertyTypeManager.ts
+var PROPERTY_TYPES = ["Checkbox", "Citation", "Date", "Date & time", "Enum", "List", "Number", "Text"];
+
+// src/ui/PropertyConfigRenderer.ts
+var PropertyConfigRenderer = class {
+  constructor(plugin) {
+    this.plugin = plugin;
+  }
+  renderPropertyConfig(containerEl, property, mapping, onUpdate) {
+    const setting = new import_obsidian2.Setting(containerEl).setName(property).setDesc(`Display name: ${mapping.displayName}, Type: ${mapping.type}`).addText((text) => text.setValue(mapping.displayName).onChange((value) => __async(this, null, function* () {
+      this.plugin.settings.propertyMappings[property].displayName = value;
+      yield this.plugin.saveSettings();
+      onUpdate();
+    }))).addDropdown((dropdown) => {
+      PROPERTY_TYPES.forEach((type) => {
+        dropdown.addOption(type, type);
+      });
+      return dropdown.setValue(mapping.type).onChange((value) => __async(this, null, function* () {
+        this.plugin.settings.propertyMappings[property].type = value;
+        if (value === "Enum" && !this.plugin.settings.propertyMappings[property].enumOptions) {
+          this.plugin.settings.propertyMappings[property].enumOptions = [];
+        }
+        if (value === "Citation" && !this.plugin.settings.propertyMappings[property].citationConfig) {
+          this.plugin.settings.propertyMappings[property].citationConfig = {
+            propertyName: "entity-type",
+            propertyValue: ""
+          };
+        }
+        yield this.plugin.saveSettings();
+        onUpdate();
+      }));
+    }).addButton((button) => button.setButtonText("Delete").setWarning().onClick(() => __async(this, null, function* () {
+      delete this.plugin.settings.propertyMappings[property];
+      yield this.plugin.saveSettings();
+      onUpdate();
+    })));
+    return setting;
+  }
+  renderEnumConfig(containerEl, property, mapping, onUpdate) {
+    if (!mapping.enumOptions) {
+      mapping.enumOptions = [];
+    }
+    const enumContainer = containerEl.createEl("div");
+    enumContainer.style.marginLeft = "20px";
+    enumContainer.style.marginBottom = "10px";
+    enumContainer.style.padding = "10px";
+    enumContainer.style.border = "1px solid var(--background-modifier-border)";
+    enumContainer.style.borderRadius = "4px";
+    enumContainer.style.background = "var(--background-secondary)";
+    enumContainer.createEl("h4", { text: "Enum Options" });
+    const addEnumContainer = enumContainer.createEl("div");
+    addEnumContainer.style.display = "flex";
+    addEnumContainer.style.gap = "8px";
+    addEnumContainer.style.marginBottom = "10px";
+    const enumNameInput = addEnumContainer.createEl("input");
+    enumNameInput.type = "text";
+    enumNameInput.placeholder = "Enum-Name";
+    enumNameInput.style.flex = "1";
+    enumNameInput.style.padding = "8px";
+    enumNameInput.style.border = "1px solid var(--background-modifier-border)";
+    enumNameInput.style.borderRadius = "4px";
+    enumNameInput.style.background = "var(--background-primary)";
+    enumNameInput.style.color = "var(--text-normal)";
+    const addEnumButton = addEnumContainer.createEl("button", { text: "Enum-Add" });
+    addEnumButton.style.padding = "8px 16px";
+    addEnumButton.style.border = "1px solid var(--background-modifier-border)";
+    addEnumButton.style.borderRadius = "4px";
+    addEnumButton.style.background = "var(--background-secondary)";
+    addEnumButton.style.color = "var(--text-normal)";
+    addEnumButton.style.cursor = "pointer";
+    addEnumButton.addEventListener("click", () => __async(this, null, function* () {
+      var _a, _b;
+      const enumName = enumNameInput.value.trim();
+      if (enumName && !((_a = mapping.enumOptions) == null ? void 0 : _a.includes(enumName))) {
+        (_b = mapping.enumOptions) == null ? void 0 : _b.push(enumName);
+        yield this.plugin.saveSettings();
+        onUpdate();
+      }
+    }));
+    mapping.enumOptions.forEach((option, index) => {
+      const optionContainer = enumContainer.createEl("div");
+      optionContainer.style.display = "flex";
+      optionContainer.style.alignItems = "center";
+      optionContainer.style.gap = "8px";
+      optionContainer.style.marginBottom = "4px";
+      const optionText = optionContainer.createEl("span");
+      optionText.textContent = option;
+      optionText.style.flex = "1";
+      optionText.style.padding = "4px 8px";
+      optionText.style.border = "1px solid var(--background-modifier-border)";
+      optionText.style.borderRadius = "4px";
+      const deleteEnumButton = optionContainer.createEl("button", { text: "Enum-Delete" });
+      deleteEnumButton.style.padding = "4px 8px";
+      deleteEnumButton.style.border = "1px solid var(--background-modifier-border)";
+      deleteEnumButton.style.borderRadius = "4px";
+      deleteEnumButton.style.background = "var(--background-secondary)";
+      deleteEnumButton.style.color = "var(--text-normal)";
+      deleteEnumButton.style.cursor = "pointer";
+      deleteEnumButton.addEventListener("click", () => __async(this, null, function* () {
+        var _a;
+        (_a = mapping.enumOptions) == null ? void 0 : _a.splice(index, 1);
+        yield this.plugin.saveSettings();
+        onUpdate();
+      }));
+    });
+  }
+  renderCitationConfig(containerEl, property, mapping, onUpdate) {
+    if (!mapping.citationConfig) {
+      mapping.citationConfig = {
+        propertyName: "entity-type",
+        propertyValue: ""
+      };
+    }
+    const citationContainer = containerEl.createEl("div");
+    citationContainer.style.marginLeft = "20px";
+    citationContainer.style.marginBottom = "10px";
+    citationContainer.style.padding = "10px";
+    citationContainer.style.border = "1px solid var(--background-modifier-border)";
+    citationContainer.style.borderRadius = "4px";
+    citationContainer.style.background = "var(--background-secondary)";
+    citationContainer.createEl("h4", { text: "Citation Configuration" });
+    const propertyNameContainer = citationContainer.createEl("div");
+    propertyNameContainer.style.display = "flex";
+    propertyNameContainer.style.alignItems = "center";
+    propertyNameContainer.style.gap = "8px";
+    propertyNameContainer.style.marginBottom = "8px";
+    propertyNameContainer.createEl("label", { text: "Property-Name:" });
+    const propertyNameInput = propertyNameContainer.createEl("input");
+    propertyNameInput.type = "text";
+    propertyNameInput.value = mapping.citationConfig.propertyName;
+    propertyNameInput.style.flex = "1";
+    propertyNameInput.style.padding = "8px";
+    propertyNameInput.style.border = "1px solid var(--background-modifier-border)";
+    propertyNameInput.style.borderRadius = "4px";
+    propertyNameInput.style.background = "var(--background-primary)";
+    propertyNameInput.style.color = "var(--text-normal)";
+    propertyNameInput.addEventListener("change", () => __async(this, null, function* () {
+      mapping.citationConfig.propertyName = propertyNameInput.value.trim();
+      yield this.plugin.saveSettings();
+      onUpdate();
+    }));
+    const propertyValueContainer = citationContainer.createEl("div");
+    propertyValueContainer.style.display = "flex";
+    propertyValueContainer.style.alignItems = "center";
+    propertyValueContainer.style.gap = "8px";
+    propertyValueContainer.createEl("label", { text: "Property-Value:" });
+    const propertyValueInput = propertyValueContainer.createEl("input");
+    propertyValueInput.type = "text";
+    propertyValueInput.value = mapping.citationConfig.propertyValue;
+    propertyValueInput.style.flex = "1";
+    propertyValueInput.style.padding = "8px";
+    propertyValueInput.style.border = "1px solid var(--background-modifier-border)";
+    propertyValueInput.style.borderRadius = "4px";
+    propertyValueInput.style.background = "var(--background-primary)";
+    propertyValueInput.style.color = "var(--text-normal)";
+    propertyValueInput.addEventListener("change", () => __async(this, null, function* () {
+      mapping.citationConfig.propertyValue = propertyValueInput.value.trim();
+      yield this.plugin.saveSettings();
+      onUpdate();
+    }));
+  }
+  renderAddMappingForm(containerEl, onUpdate) {
+    const addMappingSetting = new import_obsidian2.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addDropdown((dropdown) => {
+      PROPERTY_TYPES.forEach((type) => {
+        dropdown.addOption(type, type);
+      });
+      return dropdown.setValue("Text");
+    }).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
+      const propertyInput = addMappingSetting.components[0];
+      const displayNameInput = addMappingSetting.components[1];
+      const typeDropdown = addMappingSetting.components[2];
+      const property = propertyInput.getValue().trim();
+      const displayName2 = displayNameInput.getValue().trim();
+      const type = typeDropdown.getValue();
+      if (property && displayName2) {
+        const newMapping = {
+          displayName: displayName2,
+          type
+        };
+        if (type === "Enum") {
+          newMapping.enumOptions = [];
+        }
+        if (type === "Citation") {
+          newMapping.citationConfig = {
+            propertyName: "entity-type",
+            propertyValue: ""
+          };
+        }
+        this.plugin.settings.propertyMappings[property] = newMapping;
+        yield this.plugin.saveSettings();
+        propertyInput.setValue("");
+        displayNameInput.setValue("");
+        typeDropdown.setValue("Text");
+        onUpdate();
+      }
+    })));
+    return addMappingSetting;
+  }
+};
+
+// src/ui/EntityCreatorSettingTab.ts
+var EntityCreatorSettingTab = class extends import_obsidian3.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -612,7 +870,7 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
     containerEl.createEl("h3", { text: "Entity Types Management" });
     containerEl.createEl("p", { text: "Add, edit, and delete entity types" });
     Object.entries(this.plugin.settings.entityTypes).forEach(([entityType, displayName]) => {
-      const setting = new import_obsidian2.Setting(containerEl).setName(entityType).setDesc(`Display name: ${displayName}`).addText((text) => text.setValue(displayName).onChange((value) => __async(this, null, function* () {
+      const setting = new import_obsidian3.Setting(containerEl).setName(entityType).setDesc(`Display name: ${displayName}`).addText((text) => text.setValue(displayName).onChange((value) => __async(this, null, function* () {
         this.plugin.settings.entityTypes[entityType] = value;
         yield this.plugin.saveSettings();
         this.display();
@@ -623,7 +881,7 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
         this.display();
       })));
     });
-    const addEntityTypeSetting = new import_obsidian2.Setting(containerEl).setName("Add New Entity Type").setDesc("Add a new entity type").addText((text) => text.setPlaceholder("entity-type-id").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
+    const addEntityTypeSetting = new import_obsidian3.Setting(containerEl).setName("Add New Entity Type").setDesc("Add a new entity type").addText((text) => text.setPlaceholder("entity-type-id").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
       const entityTypeIdInput = addEntityTypeSetting.components[0];
       const displayNameInput = addEntityTypeSetting.components[1];
       const entityTypeId = entityTypeIdInput.getValue().trim();
@@ -642,182 +900,16 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
     })));
     containerEl.createEl("h3", { text: "Property Mappings" });
     containerEl.createEl("p", { text: "Map template properties to display names in the modal (shared by all entities)" });
+    const propertyConfigRenderer = new PropertyConfigRenderer(this.plugin);
     Object.entries(this.plugin.settings.propertyMappings).forEach(([property, mapping]) => {
-      const setting = new import_obsidian2.Setting(containerEl).setName(property).setDesc(`Display name: ${mapping.displayName}, Type: ${mapping.type}`).addText((text) => text.setValue(mapping.displayName).onChange((value) => __async(this, null, function* () {
-        this.plugin.settings.propertyMappings[property].displayName = value;
-        yield this.plugin.saveSettings();
-        this.display();
-      }))).addDropdown((dropdown) => dropdown.addOption("Checkbox", "Checkbox").addOption("Citation", "Citation").addOption("Date", "Date").addOption("Date & time", "Date & time").addOption("Enum", "Enum").addOption("List", "List").addOption("Number", "Number").addOption("Text", "Text").setValue(mapping.type).onChange((value) => __async(this, null, function* () {
-        this.plugin.settings.propertyMappings[property].type = value;
-        if (value === "Enum" && !this.plugin.settings.propertyMappings[property].enumOptions) {
-          this.plugin.settings.propertyMappings[property].enumOptions = [];
-        }
-        if (value === "Citation" && !this.plugin.settings.propertyMappings[property].citationConfig) {
-          this.plugin.settings.propertyMappings[property].citationConfig = {
-            propertyName: "entity-type",
-            propertyValue: ""
-          };
-        }
-        yield this.plugin.saveSettings();
-        this.display();
-      }))).addButton((button) => button.setButtonText("Delete").setWarning().onClick(() => __async(this, null, function* () {
-        delete this.plugin.settings.propertyMappings[property];
-        yield this.plugin.saveSettings();
-        this.display();
-      })));
+      propertyConfigRenderer.renderPropertyConfig(containerEl, property, mapping, () => this.display());
       if (mapping.type === "Enum") {
-        if (!mapping.enumOptions) {
-          mapping.enumOptions = [];
-        }
-        const enumContainer = containerEl.createEl("div");
-        enumContainer.style.marginLeft = "20px";
-        enumContainer.style.marginBottom = "10px";
-        enumContainer.style.padding = "10px";
-        enumContainer.style.border = "1px solid var(--background-modifier-border)";
-        enumContainer.style.borderRadius = "4px";
-        enumContainer.style.background = "var(--background-secondary)";
-        enumContainer.createEl("h4", { text: "Enum Options" });
-        const addEnumContainer = enumContainer.createEl("div");
-        addEnumContainer.style.display = "flex";
-        addEnumContainer.style.gap = "8px";
-        addEnumContainer.style.marginBottom = "10px";
-        const enumNameInput = addEnumContainer.createEl("input");
-        enumNameInput.type = "text";
-        enumNameInput.placeholder = "Enum-Name";
-        enumNameInput.style.flex = "1";
-        enumNameInput.style.padding = "8px";
-        enumNameInput.style.border = "1px solid var(--background-modifier-border)";
-        enumNameInput.style.borderRadius = "4px";
-        enumNameInput.style.background = "var(--background-primary)";
-        enumNameInput.style.color = "var(--text-normal)";
-        const addEnumButton = addEnumContainer.createEl("button", { text: "Enum-Add" });
-        addEnumButton.style.padding = "8px 16px";
-        addEnumButton.style.border = "1px solid var(--background-modifier-border)";
-        addEnumButton.style.borderRadius = "4px";
-        addEnumButton.style.background = "var(--background-secondary)";
-        addEnumButton.style.color = "var(--text-normal)";
-        addEnumButton.style.cursor = "pointer";
-        addEnumButton.addEventListener("click", () => __async(this, null, function* () {
-          var _a, _b;
-          const enumName = enumNameInput.value.trim();
-          if (enumName && !((_a = mapping.enumOptions) == null ? void 0 : _a.includes(enumName))) {
-            (_b = mapping.enumOptions) == null ? void 0 : _b.push(enumName);
-            yield this.plugin.saveSettings();
-            enumNameInput.value = "";
-            this.display();
-          }
-        }));
-        mapping.enumOptions.forEach((option, index) => {
-          const optionContainer = enumContainer.createEl("div");
-          optionContainer.style.display = "flex";
-          optionContainer.style.alignItems = "center";
-          optionContainer.style.gap = "8px";
-          optionContainer.style.marginBottom = "4px";
-          const optionText = optionContainer.createEl("span");
-          optionText.textContent = option;
-          optionText.style.flex = "1";
-          optionText.style.padding = "4px 8px";
-          optionText.style.border = "1px solid var(--background-modifier-border)";
-          optionText.style.borderRadius = "4px";
-          const deleteEnumButton = optionContainer.createEl("button", { text: "Enum-Delete" });
-          deleteEnumButton.style.padding = "4px 8px";
-          deleteEnumButton.style.border = "1px solid var(--background-modifier-border)";
-          deleteEnumButton.style.borderRadius = "4px";
-          deleteEnumButton.style.background = "var(--background-secondary)";
-          deleteEnumButton.style.color = "var(--text-normal)";
-          deleteEnumButton.style.cursor = "pointer";
-          deleteEnumButton.addEventListener("click", () => __async(this, null, function* () {
-            var _a;
-            (_a = mapping.enumOptions) == null ? void 0 : _a.splice(index, 1);
-            yield this.plugin.saveSettings();
-            this.display();
-          }));
-        });
+        propertyConfigRenderer.renderEnumConfig(containerEl, property, mapping, () => this.display());
       } else if (mapping.type === "Citation") {
-        if (!mapping.citationConfig) {
-          mapping.citationConfig = {
-            propertyName: "entity-type",
-            propertyValue: ""
-          };
-        }
-        const citationContainer = containerEl.createEl("div");
-        citationContainer.style.marginLeft = "20px";
-        citationContainer.style.marginBottom = "10px";
-        citationContainer.style.padding = "10px";
-        citationContainer.style.border = "1px solid var(--background-modifier-border)";
-        citationContainer.style.borderRadius = "4px";
-        citationContainer.style.background = "var(--background-secondary)";
-        citationContainer.createEl("h4", { text: "Citation Configuration" });
-        const propertyNameContainer = citationContainer.createEl("div");
-        propertyNameContainer.style.display = "flex";
-        propertyNameContainer.style.alignItems = "center";
-        propertyNameContainer.style.gap = "8px";
-        propertyNameContainer.style.marginBottom = "8px";
-        propertyNameContainer.createEl("label", { text: "Property-Name:" });
-        const propertyNameInput = propertyNameContainer.createEl("input");
-        propertyNameInput.type = "text";
-        propertyNameInput.value = mapping.citationConfig.propertyName;
-        propertyNameInput.style.flex = "1";
-        propertyNameInput.style.padding = "8px";
-        propertyNameInput.style.border = "1px solid var(--background-modifier-border)";
-        propertyNameInput.style.borderRadius = "4px";
-        propertyNameInput.style.background = "var(--background-primary)";
-        propertyNameInput.style.color = "var(--text-normal)";
-        propertyNameInput.addEventListener("change", () => __async(this, null, function* () {
-          mapping.citationConfig.propertyName = propertyNameInput.value.trim();
-          yield this.plugin.saveSettings();
-          this.display();
-        }));
-        const propertyValueContainer = citationContainer.createEl("div");
-        propertyValueContainer.style.display = "flex";
-        propertyValueContainer.style.alignItems = "center";
-        propertyValueContainer.style.gap = "8px";
-        propertyValueContainer.createEl("label", { text: "Property-Value:" });
-        const propertyValueInput = propertyValueContainer.createEl("input");
-        propertyValueInput.type = "text";
-        propertyValueInput.value = mapping.citationConfig.propertyValue;
-        propertyValueInput.style.flex = "1";
-        propertyValueInput.style.padding = "8px";
-        propertyValueInput.style.border = "1px solid var(--background-modifier-border)";
-        propertyValueInput.style.borderRadius = "4px";
-        propertyValueInput.style.background = "var(--background-primary)";
-        propertyValueInput.style.color = "var(--text-normal)";
-        propertyValueInput.addEventListener("change", () => __async(this, null, function* () {
-          mapping.citationConfig.propertyValue = propertyValueInput.value.trim();
-          yield this.plugin.saveSettings();
-          this.display();
-        }));
+        propertyConfigRenderer.renderCitationConfig(containerEl, property, mapping, () => this.display());
       }
     });
-    const addMappingSetting = new import_obsidian2.Setting(containerEl).setName("Add New Mapping").setDesc("Add a new property mapping").addText((text) => text.setPlaceholder("property-name").setValue("")).addText((text2) => text2.setPlaceholder("Display Name").setValue("")).addDropdown((dropdown) => dropdown.addOption("Checkbox", "Checkbox").addOption("Citation", "Citation").addOption("Date", "Date").addOption("Date & time", "Date & time").addOption("Enum", "Enum").addOption("List", "List").addOption("Number", "Number").addOption("Text", "Text").setValue("Text")).addButton((button) => button.setButtonText("Add").onClick(() => __async(this, null, function* () {
-      const propertyInput = addMappingSetting.components[0];
-      const displayNameInput = addMappingSetting.components[1];
-      const typeDropdown = addMappingSetting.components[2];
-      const property = propertyInput.getValue().trim();
-      const displayName2 = displayNameInput.getValue().trim();
-      const type = typeDropdown.getValue();
-      if (property && displayName2) {
-        const newMapping = {
-          displayName: displayName2,
-          type
-        };
-        if (type === "Enum") {
-          newMapping.enumOptions = [];
-        }
-        if (type === "Citation") {
-          newMapping.citationConfig = {
-            propertyName: "entity-type",
-            propertyValue: ""
-          };
-        }
-        this.plugin.settings.propertyMappings[property] = newMapping;
-        yield this.plugin.saveSettings();
-        propertyInput.setValue("");
-        displayNameInput.setValue("");
-        typeDropdown.setValue("Text");
-        this.display();
-      }
-    })));
+    propertyConfigRenderer.renderAddMappingForm(containerEl, () => this.display());
   }
   renderTabContent(containerEl, entityType) {
     const displayName = this.plugin.settings.entityTypes[entityType];
@@ -827,11 +919,11 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
       return;
     }
     containerEl.createEl("h3", { text: `${displayName} Settings` });
-    new import_obsidian2.Setting(containerEl).setName(`${displayName} Note Path`).setDesc(`Path where ${displayName} notes will be created`).addText((text) => text.setPlaceholder(`${displayName}s`).setValue(entityConfig.notePath).onChange((value) => __async(this, null, function* () {
+    new import_obsidian3.Setting(containerEl).setName(`${displayName} Note Path`).setDesc(`Path where ${displayName} notes will be created`).addText((text) => text.setPlaceholder(`${displayName}s`).setValue(entityConfig.notePath).onChange((value) => __async(this, null, function* () {
       entityConfig.notePath = value;
       yield this.plugin.saveSettings();
     })));
-    new import_obsidian2.Setting(containerEl).setName(`${displayName} Template File Path`).setDesc(`Path to the ${displayName} template file`).addText((text) => text.setPlaceholder(`_Templates/Temp-${displayName}.md`).setValue(entityConfig.templatePath).onChange((value) => __async(this, null, function* () {
+    new import_obsidian3.Setting(containerEl).setName(`${displayName} Template File Path`).setDesc(`Path to the ${displayName} template file`).addText((text) => text.setPlaceholder(`_Templates/Temp-${displayName}.md`).setValue(entityConfig.templatePath).onChange((value) => __async(this, null, function* () {
       entityConfig.templatePath = value;
       yield this.plugin.saveSettings();
     })));
@@ -839,7 +931,7 @@ var EntityCreatorSettingTab = class extends import_obsidian2.PluginSettingTab {
 };
 
 // src/main.ts
-var EntityCreatorPlugin = class extends import_obsidian3.Plugin {
+var EntityCreatorPlugin = class extends import_obsidian4.Plugin {
   onload() {
     return __async(this, null, function* () {
       yield this.loadSettings();
@@ -909,7 +1001,7 @@ var EntityCreatorPlugin = class extends import_obsidian3.Plugin {
         }
         const templatePath = entityConfig.templatePath;
         const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
-        if (!templateFile || !(templateFile instanceof import_obsidian3.TFile)) {
+        if (!templateFile || !(templateFile instanceof import_obsidian4.TFile)) {
           console.error(`Template file not found at: ${templatePath}`);
           return;
         }

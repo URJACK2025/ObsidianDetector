@@ -1,6 +1,9 @@
-import { App, Modal, TextComponent, TFile } from 'obsidian';
-import { EntityType, EntityCreatorSettings, PropertyType, getEntityDisplayName } from '../types';
+import { App, Modal, TFile } from 'obsidian';
+import { EntityType, EntityCreatorSettings } from '../types';
 import { getTemplateProperties, getDisplayName } from '../utils/yaml';
+import { EntityTypeManager } from '../utils/EntityTypeManager';
+import { PropertyValueFormatter } from '../utils/PropertyValueFormatter';
+import { PropertyControlRenderer, ControlReference } from './PropertyControlRenderer';
 
 // 实体创建弹窗
 export class EntityModal extends Modal {
@@ -9,7 +12,7 @@ export class EntityModal extends Modal {
   // 实体类型
   entityType: EntityType;
   // 输入控件引用映射
-  inputFields: Record<string, any> = {};
+  inputControls: Record<string, ControlReference> = {};
   // 模板属性
   templateProperties: string[] = [];
   // 回调函数
@@ -24,7 +27,7 @@ export class EntityModal extends Modal {
 
   async onOpen() {
     const { contentEl } = this;
-    const displayName = getEntityDisplayName(this.entityType, this.plugin.settings);
+    const displayName = EntityTypeManager.getEntityDisplayName(this.entityType, this.plugin.settings);
 
     // 设置标题
     contentEl.createEl('h2', { text: `Create Entity-${displayName}` });
@@ -103,7 +106,7 @@ export class EntityModal extends Modal {
             checkboxContainer.appendChild(checkboxLabel);
             
             // 存储输入控件引用
-            this.inputFields[property] = { type: propertyType, element: checkbox };
+            this.inputControls[property] = { type: propertyType, element: checkbox };
           } else if (propertyType === 'Citation') {
             // Citation类型：使用搜索和选择功能
             const citationConfig = propertyMapping?.citationConfig || { propertyName: 'entity-type', propertyValue: '' };
@@ -305,7 +308,7 @@ export class EntityModal extends Modal {
             });
             
             // 存储Citation控件引用
-            this.inputFields[property] = { 
+            this.inputControls[property] = { 
               type: propertyType, 
               getValues: () => selectedCitations 
             };
@@ -337,7 +340,7 @@ export class EntityModal extends Modal {
             controlContainer.appendChild(selectElement);
             
             // 存储输入控件引用
-            this.inputFields[property] = { type: propertyType, element: selectElement };
+            this.inputControls[property] = { type: propertyType, element: selectElement };
           } else if (propertyType === 'List') {
             // List类型：支持添加多个值
             const listContainer = controlContainer.createEl('div');
@@ -447,7 +450,7 @@ export class EntityModal extends Modal {
             });
             
             // 存储List控件引用
-            this.inputFields[property] = { 
+            this.inputControls[property] = { 
               type: propertyType, 
               addValue, 
               getValues: () => values 
@@ -495,7 +498,7 @@ export class EntityModal extends Modal {
             controlContainer.appendChild(inputElement);
             
             // 存储输入控件引用
-            this.inputFields[property] = { type: propertyType, element: inputElement };
+            this.inputControls[property] = { type: propertyType, element: inputElement };
           }
         } catch (error) {
           console.error(`Error creating control for property ${property}:`, error);
@@ -539,54 +542,28 @@ export class EntityModal extends Modal {
         // 收集所有输入值
         const result: Record<string, string> = {};
         this.templateProperties.forEach(property => {
-          const field = this.inputFields[property];
-          const { type } = field;
-          let value: string;
+          const control = this.inputControls[property];
+          let value: any;
           
-          switch (type) {
-            case 'Checkbox':
-              // 获取checkbox的checked状态
-              value = (field.element as HTMLInputElement).checked ? 'true' : 'false';
-              break;
-            
-            case 'Citation':
-              // 获取所有添加的引用并格式化为YAML数组
-              const citations = field.getValues();
-              if (citations.length === 0) {
-                value = '';
-              } else {
-                // 格式化为YAML数组格式，使用Obsidian的引用符号[[...]]
-                value = '\n' + citations.map(v => `  - "[[${v}]]"`).join('\n');
-              }
-              break;
-            
-            case 'Enum':
-              // 获取select元素的值
-              value = (field.element as HTMLSelectElement).value;
-              break;
-            
-            case 'List':
-              // 获取所有添加的值并格式化为YAML数组
-              const values = field.getValues();
-              if (values.length === 0) {
-                value = '';
-              } else {
-                // 格式化为YAML数组格式
-                value = '\n' + values.map(v => `  - "${v}"`).join('\n');
-              }
-              break;
-            
-            case 'Date':
-            case 'Date & time':
-            case 'Number':
-            case 'Text':
-            default:
-              // 获取输入值
-              value = (field.element as HTMLInputElement).value;
-              break;
+          // 根据控件类型获取值
+          if (control.getValues) {
+            // 处理多值控件（Citation, List）
+            value = control.getValues();
+          } else if (control.element) {
+            // 处理单值控件（Checkbox, Enum, Date, Number, Text）
+            const element = control.element as HTMLInputElement | HTMLSelectElement;
+            if (element.type === 'checkbox') {
+              value = (element as HTMLInputElement).checked;
+            } else {
+              value = element.value;
+            }
+          } else {
+            // 兜底，直接使用空字符串
+            value = '';
           }
           
-          result[property] = value;
+          // 格式化值
+          result[property] = PropertyValueFormatter.formatValue(control.type, value);
         });
         
         this.onSubmit(result);
@@ -602,7 +579,7 @@ export class EntityModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     // 清空输入控件引用
-    this.inputFields = {};
+    this.inputControls = {};
     this.templateProperties = [];
   }
 }
